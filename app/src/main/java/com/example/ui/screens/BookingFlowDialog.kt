@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -25,6 +26,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -34,6 +39,9 @@ import com.example.data.model.Car
 import com.example.ui.components.RouteVisualizerCard
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainViewModel
+import com.example.util.PasswordValidator
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +67,13 @@ fun BookingFlowDialog(
 
   var customerName by remember(profile) { mutableStateOf(profile.name) }
   var customerPhone by remember(profile) { mutableStateOf(profile.phone) }
+  var customerEmail by remember(profile) { mutableStateOf(profile.email) }
+  var contactMode by remember { mutableStateOf(0) } // 0: Mobile Number (+92), 1: Email Address
+  var password by remember { mutableStateOf("") }
+  var passwordVisible by remember { mutableStateOf(false) }
+  var authErrorMessage by remember { mutableStateOf<String?>(null) }
+  var isProcessingAuth by remember { mutableStateOf(false) }
+  val coroutineScope = rememberCoroutineScope()
 
   var showPickupCityMenu by remember { mutableStateOf(false) }
   var showDropCityMenu by remember { mutableStateOf(false) }
@@ -409,47 +424,307 @@ fun BookingFlowDialog(
 
           Spacer(modifier = Modifier.height(16.dp))
 
-          // 4. Passenger Details (CRITICAL: Black text Color(0xFF0A0F1D) on white)
-          Text(text = "4. Passenger Contact Info", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+          // 4. Passenger Details & Account Sign-In
+          val isClientLoggedIn = profile.isLoggedIn
+          Text(
+            text = if (isClientLoggedIn) "4. Passenger Contact Info" else "4. Account Sign-In / Sign-Up (Required to Book)",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = NavyPrimary
+          )
           Spacer(modifier = Modifier.height(8.dp))
 
-          OutlinedTextField(
-            value = customerName,
-            onValueChange = { customerName = it },
-            label = { Text("Passenger Name", fontSize = 11.sp) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-              focusedTextColor = Color(0xFF0A0F1D),
-              unfocusedTextColor = Color(0xFF0A0F1D),
-              cursorColor = NavyPrimary,
-              focusedContainerColor = Color.White,
-              unfocusedContainerColor = Color.White,
-              focusedBorderColor = NavyPrimary,
-              unfocusedBorderColor = BorderStroke
-            )
-          )
+          if (isClientLoggedIn) {
+            Card(
+              shape = RoundedCornerShape(12.dp),
+              colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+              border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC)),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Box(
+                  modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF22C55E)),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                  Text("Verified Member Account", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14532D))
+                  Text("${profile.name} • ${profile.phone.ifBlank { profile.email }}", fontSize = 11.5.sp, color = Color(0xFF166534))
+                }
+              }
+            }
 
-          Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-          OutlinedTextField(
-            value = customerPhone,
-            onValueChange = { customerPhone = it },
-            label = { Text("Mobile Number (WhatsApp)", fontSize = 11.sp) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-              focusedTextColor = Color(0xFF0A0F1D),
-              unfocusedTextColor = Color(0xFF0A0F1D),
-              cursorColor = NavyPrimary,
-              focusedContainerColor = Color.White,
-              unfocusedContainerColor = Color.White,
-              focusedBorderColor = NavyPrimary,
-              unfocusedBorderColor = BorderStroke
+            OutlinedTextField(
+              value = customerName,
+              onValueChange = { customerName = it },
+              label = { Text("Passenger Name", fontSize = 11.sp) },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(10.dp),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0A0F1D),
+                unfocusedTextColor = Color(0xFF0A0F1D),
+                cursorColor = NavyPrimary,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = NavyPrimary,
+                unfocusedBorderColor = BorderStroke
+              )
             )
-          )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+              value = customerPhone,
+              onValueChange = { customerPhone = it },
+              label = { Text("Mobile Number (WhatsApp)", fontSize = 11.sp) },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(10.dp),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0A0F1D),
+                unfocusedTextColor = Color(0xFF0A0F1D),
+                cursorColor = NavyPrimary,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = NavyPrimary,
+                unfocusedBorderColor = BorderStroke
+              )
+            )
+          } else {
+            Card(
+              shape = RoundedCornerShape(14.dp),
+              colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+              border = androidx.compose.foundation.BorderStroke(1.dp, BorderStroke),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Column(modifier = Modifier.padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.Lock, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(16.dp))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text(
+                    text = "Sign In & Continue with Password",
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NavyPrimary
+                  )
+                }
+                Text(
+                  text = "Please enter your name, phone or email, and password to confirm your booking and create your member account.",
+                  fontSize = 11.sp,
+                  color = TextSecondaryMuted,
+                  modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Full Name
+                Text("Full Name", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = customerName,
+                  onValueChange = {
+                    customerName = it
+                    authErrorMessage = null
+                  },
+                  placeholder = { Text("e.g. Mehdi Raza", fontSize = 12.sp, color = TextSecondaryMuted) },
+                  singleLine = true,
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(8.dp),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0A0F1D),
+                    unfocusedTextColor = Color(0xFF0A0F1D),
+                    cursorColor = NavyPrimary,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = NavyPrimary,
+                    unfocusedBorderColor = BorderStroke
+                  )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Mode Switcher: Mobile Phone vs Email Address
+                Row(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFE2E8F0))
+                    .padding(2.dp)
+                ) {
+                  Box(
+                    modifier = Modifier
+                      .weight(1f)
+                      .clip(RoundedCornerShape(6.dp))
+                      .background(if (contactMode == 0) Color.White else Color.Transparent)
+                      .clickable {
+                        contactMode = 0
+                        authErrorMessage = null
+                      }
+                      .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                  ) {
+                    Text(
+                      text = "Mobile Phone (+92)",
+                      fontSize = 11.sp,
+                      fontWeight = if (contactMode == 0) FontWeight.Bold else FontWeight.Medium,
+                      color = if (contactMode == 0) NavyPrimary else TextSecondaryMuted
+                    )
+                  }
+
+                  Box(
+                    modifier = Modifier
+                      .weight(1f)
+                      .clip(RoundedCornerShape(6.dp))
+                      .background(if (contactMode == 1) Color.White else Color.Transparent)
+                      .clickable {
+                        contactMode = 1
+                        authErrorMessage = null
+                      }
+                      .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                  ) {
+                    Text(
+                      text = "Email Address",
+                      fontSize = 11.sp,
+                      fontWeight = if (contactMode == 1) FontWeight.Bold else FontWeight.Medium,
+                      color = if (contactMode == 1) NavyPrimary else TextSecondaryMuted
+                    )
+                  }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (contactMode == 0) {
+                  OutlinedTextField(
+                    value = customerPhone,
+                    onValueChange = {
+                      customerPhone = it
+                      authErrorMessage = null
+                    },
+                    placeholder = { Text("315 2292493", fontSize = 12.sp, color = TextSecondaryMuted) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                    leadingIcon = {
+                      Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 8.dp, end = 4.dp)) {
+                        Text("🇵🇰 +92", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+                      }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedTextColor = Color(0xFF0A0F1D),
+                      unfocusedTextColor = Color(0xFF0A0F1D),
+                      cursorColor = NavyPrimary,
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = NavyPrimary,
+                      unfocusedBorderColor = BorderStroke
+                    )
+                  )
+                } else {
+                  OutlinedTextField(
+                    value = customerEmail,
+                    onValueChange = {
+                      customerEmail = it
+                      authErrorMessage = null
+                    },
+                    placeholder = { Text("user@gmail.com", fontSize = 12.sp, color = TextSecondaryMuted) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    leadingIcon = {
+                      Icon(Icons.Default.Email, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(16.dp))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedTextColor = Color(0xFF0A0F1D),
+                      unfocusedTextColor = Color(0xFF0A0F1D),
+                      cursorColor = NavyPrimary,
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = NavyPrimary,
+                      unfocusedBorderColor = BorderStroke
+                    )
+                  )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Password
+                Text("Password", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = password,
+                  onValueChange = {
+                    password = it
+                    authErrorMessage = null
+                  },
+                  placeholder = { Text("Min 8 chars, letters & numbers", fontSize = 12.sp, color = TextSecondaryMuted) },
+                  singleLine = true,
+                  visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                  leadingIcon = {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(16.dp))
+                  },
+                  trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                      Icon(
+                        if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = TextSecondaryMuted,
+                        modifier = Modifier.size(18.dp)
+                      )
+                    }
+                  },
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(8.dp),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0A0F1D),
+                    unfocusedTextColor = Color(0xFF0A0F1D),
+                    cursorColor = NavyPrimary,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = NavyPrimary,
+                    unfocusedBorderColor = BorderStroke
+                  )
+                )
+
+                val hasLength = password.length >= 8
+                val hasAlphaNum = password.any { it.isLetter() } && password.any { it.isDigit() }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(
+                    if (hasLength && hasAlphaNum) Icons.Default.CheckCircle else Icons.Default.Info,
+                    contentDescription = null,
+                    tint = if (hasLength && hasAlphaNum) StatusGreen else TextSecondaryMuted,
+                    modifier = Modifier.size(12.dp)
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text(
+                    text = "Requires min 8 alphanumeric characters (letters + numbers)",
+                    fontSize = 10.sp,
+                    color = if (hasLength && hasAlphaNum) StatusGreen else TextSecondaryMuted
+                  )
+                }
+
+                authErrorMessage?.let { err ->
+                  Spacer(modifier = Modifier.height(6.dp))
+                  Text(text = err, color = StatusRed, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+              }
+            }
+          }
 
           Spacer(modifier = Modifier.height(16.dp))
 
@@ -499,63 +774,151 @@ fun BookingFlowDialog(
 
           Spacer(modifier = Modifier.height(18.dp))
 
-          // Confirm and Submit Button
+          // Confirm and Submit Button (Enforces sign in & continue before booking!)
           Button(
             onClick = {
-              val bookingId = "PED-${10000 + Random().nextInt(90000)}"
-              val newBooking = Booking(
-                id = bookingId,
-                carId = car.id,
-                carName = car.name,
-                carCategory = car.category,
-                carImageRes = car.imageRes,
-                tripType = selectedTripType,
-                pickupCity = pickupCity,
-                pickupAddress = pickupAddress,
-                dropCity = dropCity,
-                dropAddress = dropAddress,
-                dateText = selectedDate,
-                timeText = selectedTime,
-                rentalDurationText = if (durationDays == 1) "1 Day" else "$durationDays Days",
-                withDriver = true,
-                totalEstimatedPrice = calculatedTotal,
-                customerName = customerName.ifBlank { "Valued Customer" },
-                customerPhone = customerPhone.ifBlank { "+92 315 2292493" },
-                status = "Driver Assigned",
-                driverName = "Muhammad Aslam",
-                driverPhone = "+92 315 2292493",
-                vehiclePlateNumber = "BLF-256 (Sindh)"
-              )
-              viewModel.completeBooking(newBooking)
+              if (!isClientLoggedIn) {
+                if (customerName.isBlank()) {
+                  authErrorMessage = "Please enter your full name."
+                  return@Button
+                }
 
-              // Track booking route in Firebase Analytics
-              PakEDriveApplication.logBookingRoute(
-                carName = car.name,
-                fromCity = pickupCity,
-                toCity = dropCity,
-                rate = calculatedTotal.toLong()
-              )
+                val identifier = if (contactMode == 0) {
+                  val digits = customerPhone.filter { it.isDigit() }
+                  if (digits.length < 7) {
+                    authErrorMessage = "Please enter a valid mobile number."
+                    return@Button
+                  }
+                  if (digits.startsWith("0")) "+92 " + digits.substring(1) else "+92 $digits"
+                } else {
+                  if (customerEmail.isBlank() || !customerEmail.contains("@")) {
+                    authErrorMessage = "Please enter a valid email address."
+                    return@Button
+                  }
+                  customerEmail.trim()
+                }
 
-              // WhatsApp direct intent with pre-filled booking details
-              val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Phone: $customerPhone."
-              val url = "https://wa.me/923152292493?text=${Uri.encode(whatsappMsg)}"
-              val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-              try { context.startActivity(intent) } catch (_: Exception) {}
+                val valRes = PasswordValidator.validate(password)
+                if (!valRes.isValid) {
+                  authErrorMessage = valRes.errorMessage
+                  return@Button
+                }
+
+                authErrorMessage = null
+                isProcessingAuth = true
+
+                coroutineScope.launch {
+                  delay(400)
+                  viewModel.loginWithPassword(
+                    identifier = identifier,
+                    name = customerName.trim(),
+                    isEmail = contactMode == 1
+                  )
+
+                  val bookingId = "PED-${10000 + Random().nextInt(90000)}"
+                  val newBooking = Booking(
+                    id = bookingId,
+                    carId = car.id,
+                    carName = car.name,
+                    carCategory = car.category,
+                    carImageRes = car.imageRes,
+                    tripType = selectedTripType,
+                    pickupCity = pickupCity,
+                    pickupAddress = pickupAddress,
+                    dropCity = dropCity,
+                    dropAddress = dropAddress,
+                    dateText = selectedDate,
+                    timeText = selectedTime,
+                    rentalDurationText = if (durationDays == 1) "1 Day" else "$durationDays Days",
+                    withDriver = true,
+                    totalEstimatedPrice = calculatedTotal,
+                    customerName = customerName.trim(),
+                    customerPhone = if (contactMode == 0) identifier else "+92 315 2292493",
+                    status = "Driver Assigned",
+                    driverName = "Muhammad Aslam",
+                    driverPhone = "+92 315 2292493",
+                    vehiclePlateNumber = "BLF-256 (Sindh)"
+                  )
+                  viewModel.completeBooking(newBooking)
+
+                  PakEDriveApplication.logBookingRoute(
+                    carName = car.name,
+                    fromCity = pickupCity,
+                    toCity = dropCity,
+                    rate = calculatedTotal.toLong()
+                  )
+
+                  val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I signed in and booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Contact: $identifier."
+                  val url = "https://wa.me/923152292493?text=${Uri.encode(whatsappMsg)}"
+                  val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                  try { context.startActivity(intent) } catch (_: Exception) {}
+                  isProcessingAuth = false
+                }
+              } else {
+                val bookingId = "PED-${10000 + Random().nextInt(90000)}"
+                val newBooking = Booking(
+                  id = bookingId,
+                  carId = car.id,
+                  carName = car.name,
+                  carCategory = car.category,
+                  carImageRes = car.imageRes,
+                  tripType = selectedTripType,
+                  pickupCity = pickupCity,
+                  pickupAddress = pickupAddress,
+                  dropCity = dropCity,
+                  dropAddress = dropAddress,
+                  dateText = selectedDate,
+                  timeText = selectedTime,
+                  rentalDurationText = if (durationDays == 1) "1 Day" else "$durationDays Days",
+                  withDriver = true,
+                  totalEstimatedPrice = calculatedTotal,
+                  customerName = customerName.ifBlank { profile.name.ifBlank { "Valued Member" } },
+                  customerPhone = customerPhone.ifBlank { profile.phone.ifBlank { "+92 315 2292493" } },
+                  status = "Driver Assigned",
+                  driverName = "Muhammad Aslam",
+                  driverPhone = "+92 315 2292493",
+                  vehiclePlateNumber = "BLF-256 (Sindh)"
+                )
+                viewModel.completeBooking(newBooking)
+
+                PakEDriveApplication.logBookingRoute(
+                  carName = car.name,
+                  fromCity = pickupCity,
+                  toCity = dropCity,
+                  rate = calculatedTotal.toLong()
+                )
+
+                val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Phone: $customerPhone."
+                val url = "https://wa.me/923152292493?text=${Uri.encode(whatsappMsg)}"
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                try { context.startActivity(intent) } catch (_: Exception) {}
+              }
             },
+            enabled = !isProcessingAuth,
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+            colors = ButtonDefaults.buttonColors(containerColor = if (!isClientLoggedIn) NavyPrimary else OrangeAccent),
             modifier = Modifier
               .fillMaxWidth()
               .height(54.dp)
           ) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              text = "Confirm Booking & Send to WhatsApp",
-              color = Color.White,
-              fontSize = 15.sp,
-              fontWeight = FontWeight.Bold
-            )
+            if (isProcessingAuth) {
+              CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+              Spacer(modifier = Modifier.width(8.dp))
+              Text("Signing In & Confirming Booking...", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            } else {
+              Icon(
+                if (!isClientLoggedIn) Icons.Default.Login else Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = Color.White
+              )
+              Spacer(modifier = Modifier.width(8.dp))
+              Text(
+                text = if (!isClientLoggedIn) "Sign In & Confirm Booking" else "Confirm Booking & Send to WhatsApp",
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+              )
+            }
           }
 
           Spacer(modifier = Modifier.height(16.dp))

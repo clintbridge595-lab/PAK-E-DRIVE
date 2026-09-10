@@ -32,12 +32,14 @@ import com.example.ui.components.BuildLogAnalyzerDialog
 import com.example.ui.components.PakEDriveTopBar
 import com.example.ui.screens.*
 import com.example.ui.theme.*
+import com.example.ui.viewmodel.AuthViewModel
 import com.example.ui.viewmodel.MainViewModel
 import com.example.util.NetworkMonitor
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
   private val viewModel: MainViewModel by viewModels()
+  private val authViewModel: AuthViewModel by viewModels()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       MyApplicationTheme {
         var showSplash by remember { mutableStateOf(true) }
+        val userProfile by viewModel.userProfile.collectAsState()
 
         if (showSplash) {
           SplashScreen(onTimeout = { showSplash = false })

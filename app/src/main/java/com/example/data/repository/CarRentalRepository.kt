@@ -516,7 +516,18 @@ class CarRentalRepository(context: Context) {
     val updated = _userProfile.value.copy(
       isLoggedIn = true,
       phone = phone,
-      name = name.ifBlank { "Valued Customer" }
+      name = name.ifBlank { "Valued Member" }
+    )
+    saveProfile(updated)
+  }
+
+  fun loginWithPassword(identifier: String, name: String, isEmail: Boolean) {
+    val current = _userProfile.value
+    val updated = current.copy(
+      isLoggedIn = true,
+      name = name.ifBlank { if (isEmail) identifier.substringBefore("@").replaceFirstChar { it.uppercase() } else "Member" },
+      phone = if (!isEmail) identifier else current.phone.ifBlank { "" },
+      email = if (isEmail) identifier else current.email.ifBlank { "" }
     )
     saveProfile(updated)
   }
@@ -560,12 +571,12 @@ class CarRentalRepository(context: Context) {
   }
 
   private fun loadProfile(): UserProfile {
-    val loggedIn = prefs.getBoolean("is_logged_in", true)
-    val name = prefs.getString("name", "Mehdi Raza") ?: "Mehdi Raza"
-    val phone = prefs.getString("phone", "+92 315 2292493") ?: "+92 315 2292493"
-    val email = prefs.getString("email", "clintbridge595@gmail.com") ?: "clintbridge595@gmail.com"
+    val loggedIn = prefs.getBoolean("is_logged_in", false)
+    val name = prefs.getString("name", "") ?: ""
+    val phone = prefs.getString("phone", "") ?: ""
+    val email = prefs.getString("email", "") ?: ""
     val city = prefs.getString("city", "Karachi") ?: "Karachi"
-    val address = prefs.getString("address", "Korangi 5, Sector 35 F Model Park, Karachi") ?: "Korangi 5, Sector 35 F Model Park, Karachi"
+    val address = prefs.getString("address", "") ?: ""
     val trips = prefs.getInt("total_trips", 0)
     return UserProfile(loggedIn, name, phone, email, city, address, trips)
   }

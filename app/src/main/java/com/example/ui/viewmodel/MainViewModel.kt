@@ -307,6 +307,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     _showAuthDialog.value = false
   }
 
+  fun loginWithPassword(identifier: String, name: String, isEmail: Boolean) {
+    repository.loginWithPassword(identifier, name, isEmail)
+    addNotification(
+      title = "Account Verified",
+      message = "Welcome to PAK E DRIVE, ${name.ifBlank { "Member" }}! You have successfully signed in."
+    )
+    _showAuthDialog.value = false
+  }
+
   fun logout() {
     repository.logout()
   }
