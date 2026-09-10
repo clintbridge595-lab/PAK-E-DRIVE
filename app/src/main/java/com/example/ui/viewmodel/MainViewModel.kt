@@ -5,15 +5,21 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.Booking
 import com.example.data.model.Car
+import com.example.data.model.Review
 import com.example.data.model.UserProfile
 import com.example.data.repository.CarRentalRepository
+import com.example.util.AppLanguage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 data class ChatMessage(
@@ -42,6 +48,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
   val userProfile: StateFlow<UserProfile> = repository.userProfile
   val bookings: StateFlow<List<Booking>> = repository.allBookings
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+  val allReviews: StateFlow<List<Review>> = repository.allReviews
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  private val _currentLanguage = MutableStateFlow(repository.getSavedLanguage())
+  val currentLanguage: StateFlow<AppLanguage> = _currentLanguage.asStateFlow()
 
   private val _selectedTab = MutableStateFlow(0)
   val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
@@ -70,64 +81,107 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
   private val _showNotifications = MutableStateFlow(false)
   val showNotifications: StateFlow<Boolean> = _showNotifications.asStateFlow()
 
-  private val _notifications = MutableStateFlow<List<AppNotification>>(
-    listOf(
-      AppNotification(
-        title = "Welcome to Hat Cab",
-        message = "Karachi, Lahore & Islamabad intercity & local bookings now live with chauffeur service.",
-        time = "10 mins ago"
-      ),
-      AppNotification(
-        title = "Fleet Special Offer",
-        message = "Get 10% fuel concession on Toyota Corolla Altis Grande for Karachi-Hyderabad tour.",
-        time = "2 hours ago"
-      )
-    )
-  )
+  private val _showFaqSupport = MutableStateFlow(false)
+  val showFaqSupport: StateFlow<Boolean> = _showFaqSupport.asStateFlow()
+
+  private val _showBuildLogAnalyzer = MutableStateFlow(false)
+  val showBuildLogAnalyzer: StateFlow<Boolean> = _showBuildLogAnalyzer.asStateFlow()
+
+  private val _reviewBooking = MutableStateFlow<Booking?>(null)
+  val reviewBooking: StateFlow<Booking?> = _reviewBooking.asStateFlow()
+
+  private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
   val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
+
+  val unreadNotificationCount: StateFlow<Int> = _notifications.map { list ->
+    list.count { !it.isRead }
+  }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
   private val _chatMessages = MutableStateFlow<List<ChatMessage>>(
     listOf(
       ChatMessage(
         sender = "agent",
-        text = "Assalam-o-Alaikum! Welcome to Hat Cab Official Assistance.\n\nLooking for a Civic RS Turbo, Altis Grande, Fortuner Legender or HiAce Grand Cabin? Ask about rates, chauffeur policies, or intercity routes!",
+        text = "Assalam-o-Alaikum! Welcome to PAK E DRIVE Official Assistance.\n\nLooking for a Civic RS Turbo, Altis Grande, Fortuner Legender or HiAce Grand Cabin? Ask about rates, chauffeur policies, or intercity routes!",
         timestamp = "Online"
       )
     )
   )
   val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
 
-  init {
-    // Seed initial booking if empty
+  fun setLanguage(language: AppLanguage) {
+    _currentLanguage.value = language
+    repository.saveLanguage(language)
+  }
+
+  fun toggleLanguage() {
+    val next = if (_currentLanguage.value == AppLanguage.URDU) AppLanguage.ENGLISH else AppLanguage.URDU
+    setLanguage(next)
+  }
+
+  fun setShowFaqSupport(show: Boolean) {
+    _showFaqSupport.value = show
+  }
+
+  fun setShowBuildLogAnalyzer(show: Boolean) {
+    _showBuildLogAnalyzer.value = show
+  }
+
+  fun openReviewDialog(booking: Booking) {
+    _reviewBooking.value = booking
+  }
+
+  fun closeReviewDialog() {
+    _reviewBooking.value = null
+  }
+
+  fun submitReview(carRating: Float, driverRating: Float, comment: String, booking: Booking) {
     viewModelScope.launch {
-      delay(300)
-      if (bookings.value.isEmpty()) {
-        val sampleBooking = Booking(
-          id = "PED-78601",
-          carId = "car_corolla_altis",
-          carName = "Toyota Corolla Altis Grande",
-          carCategory = "Sedan",
-          carImageRes = com.example.R.drawable.car_corolla_altis,
-          tripType = "Local Karachi (10 Hours)",
-          pickupCity = "Karachi",
-          pickupAddress = "Clifton Block 4, Karachi",
-          dropCity = "Karachi",
-          dropAddress = "Jinnah International Airport, Karachi",
-          dateText = "Tomorrow",
-          timeText = "10:00 AM",
-          rentalDurationText = "1 Day (10 Hours)",
-          withDriver = true,
-          totalEstimatedPrice = 6500,
-          customerName = userProfile.value.name,
-          customerPhone = userProfile.value.phone,
-          status = "Driver Assigned",
-          driverName = "Muhammad Aslam",
-          driverPhone = "+92 315 2292493",
-          vehiclePlateNumber = "BLF-256 (Sindh)"
-        )
-        repository.insertBooking(sampleBooking)
-      }
+      val avg = (carRating + driverRating) / 2f
+      val dateStr = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())
+      val review = Review(
+        id = UUID.randomUUID().toString(),
+        carId = booking.carId,
+        carName = booking.carName,
+        bookingId = booking.id,
+        userName = userProfile.value.name.ifBlank { "Verified Renter" },
+        userCity = userProfile.value.city.ifBlank { "Karachi" },
+        carRating = carRating,
+        driverRating = driverRating,
+        overallRating = avg,
+        comment = comment.ifBlank { "Excellent condition and verified polite driver." },
+        date = dateStr,
+        verifiedRental = true
+      )
+      repository.insertReview(review)
+      _reviewBooking.value = null
+
+      addNotification(
+        title = "Review Submitted",
+        message = "Thank you for rating ${booking.carName} and driver ${booking.driverName} ($avg ★)."
+      )
     }
+  }
+
+  fun markAllNotificationsAsRead() {
+    _notifications.value = _notifications.value.map { it.copy(isRead = true) }
+  }
+
+  fun clearAllNotifications() {
+    _notifications.value = emptyList()
+  }
+
+  fun deleteNotification(id: String) {
+    _notifications.value = _notifications.value.filter { it.id != id }
+  }
+
+  fun addNotification(title: String, message: String) {
+    val notif = AppNotification(
+      title = title,
+      message = message,
+      time = "Just now",
+      isRead = false
+    )
+    _notifications.value = listOf(notif) + _notifications.value
   }
 
   fun setTab(index: Int) {
@@ -236,7 +290,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
       q.contains("contact") || q.contains("call") || q.contains("number") || q.contains("whatsapp") ->
         "You can reach our Central Helpline directly at +92 315 2292493 or +92 315 2398490 on Call & WhatsApp."
       else ->
-        "Thank you for contacting Hat Cab! We offer Honda Civic RS, Altis Grande, Fortuner 4x4, Changan Oshan X7, HiAce Grand Cabin, and Wedding Cars. You can also tap 'Chat on WhatsApp' below to speak directly with our fleet manager."
+        "Thank you for contacting PAK E DRIVE! We offer Honda Civic RS, Altis Grande, Fortuner 4x4, Changan Oshan X7, HiAce Grand Cabin, and Wedding Cars. You can also tap 'Chat on WhatsApp' below to speak directly with our fleet manager."
     }
   }
 
@@ -246,6 +300,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
   fun verifyOtpAndLogin(phone: String, name: String) {
     repository.loginUser(phone, name)
+    addNotification(
+      title = "Login Verified",
+      message = "Welcome to PAK E DRIVE, $name! Your phone $phone has been verified."
+    )
     _showAuthDialog.value = false
   }
 

@@ -91,7 +91,7 @@ fun MessagesScreen(
 
           Column {
             Text(
-              text = "Hat Cab AI Assistant",
+              text = "PAK E DRIVE AI Assistant",
               fontSize = 15.sp,
               fontWeight = FontWeight.Bold,
               color = NavyPrimary

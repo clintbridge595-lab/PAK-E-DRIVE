@@ -1,7 +1,32 @@
-# ProGuard / R8 Rules for Hat Cab
+# ProGuard / R8 Rules for PAK E DRIVE
 
 # Preserve line numbers and source files for readable stack traces in Crashlytics
 -keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# ---------------------------------------------------------------------------
+# Firebase, Analytics & Crashlytics Rules
+# ---------------------------------------------------------------------------
+-keepattributes *Annotation*,Signature
+-dontwarn com.google.firebase.**
+-keep class com.google.firebase.** { *; }
+-keep class com.google.firebase.crashlytics.** { *; }
+-keep class com.google.firebase.analytics.** { *; }
+-dontwarn com.google.android.gms.measurement.**
+-keep class com.google.android.gms.measurement.** { *; }
+
+# ---------------------------------------------------------------------------
+# Coil Image Loading Rules
+# ---------------------------------------------------------------------------
+-dontwarn coil.**
+-keep class coil.** { *; }
+-keep interface coil.** { *; }
+
+# ---------------------------------------------------------------------------
+# Jetpack Compose Rules
+# ---------------------------------------------------------------------------
+-keepclassmembers class * {
+    @androidx.compose.runtime.Composable *;
+}
 
 # ---------------------------------------------------------------------------
 # Moshi Rules
@@ -30,14 +55,6 @@
 -dontwarn okio.**
 -keep class okhttp3.** { *; }
 -keep interface okhttp3.** { *; }
-
-# ---------------------------------------------------------------------------
-# Firebase & Crashlytics Rules
-# ---------------------------------------------------------------------------
--keepattributes *Annotation*,Signature
--dontwarn com.google.firebase.**
--keep class com.google.firebase.** { *; }
--keep class com.google.firebase.crashlytics.** { *; }
 
 # ---------------------------------------------------------------------------
 # Room Database Rules

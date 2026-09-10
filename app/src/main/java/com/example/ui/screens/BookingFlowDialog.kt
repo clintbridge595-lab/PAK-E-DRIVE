@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import com.example.PakEDriveApplication
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -527,8 +528,16 @@ fun BookingFlowDialog(
               )
               viewModel.completeBooking(newBooking)
 
+              // Track booking route in Firebase Analytics
+              PakEDriveApplication.logBookingRoute(
+                carName = car.name,
+                fromCity = pickupCity,
+                toCity = dropCity,
+                rate = calculatedTotal.toLong()
+              )
+
               // WhatsApp direct intent with pre-filled booking details
-              val whatsappMsg = "Assalam-o-Alaikum Hat Cab! I booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Phone: $customerPhone."
+              val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Phone: $customerPhone."
               val url = "https://wa.me/923152292493?text=${Uri.encode(whatsappMsg)}"
               val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
               try { context.startActivity(intent) } catch (_: Exception) {}

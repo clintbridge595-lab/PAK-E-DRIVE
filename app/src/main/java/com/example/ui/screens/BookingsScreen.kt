@@ -160,28 +160,25 @@ fun BookingsScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-              text = if (selectedTab == 0) "No Active Rides Right Now" else "No Trip History Found",
-              fontSize = 16.sp,
+              text = "No bookings yet.",
+              fontSize = 17.sp,
               fontWeight = FontWeight.Bold,
-              color = TextPrimaryDark
+              color = Color(0xFF111827)
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-              text = if (selectedTab == 0)
-                "Ready to hit the road? Book an executive sedan, 4x4 SUV, or wedding car with chauffeur."
-              else
-                "Your completed bookings and receipts will appear here.",
-              fontSize = 12.sp,
-              color = TextSecondaryMuted,
+              text = "Tap a car on the home screen to book.",
+              fontSize = 13.sp,
+              color = Color(0xFF6B7280),
               textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
               onClick = onBrowseCarsClick,
-              colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
-              shape = RoundedCornerShape(10.dp)
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF132238)),
+              shape = RoundedCornerShape(20.dp)
             ) {
-              Text("Browse Fleet & Book", color = Color.White, fontWeight = FontWeight.Bold)
+              Text("Browse Fleet", color = Color.White, fontWeight = FontWeight.Bold)
             }
           }
         }
@@ -196,7 +193,8 @@ fun BookingsScreen(
           BookingItemCard(
             booking = booking,
             onCancelBooking = { viewModel.cancelBooking(booking.id) },
-            onDeleteBooking = { viewModel.deleteBooking(booking.id) }
+            onDeleteBooking = { viewModel.deleteBooking(booking.id) },
+            onReviewClick = { viewModel.openReviewDialog(booking) }
           )
         }
       }
@@ -208,7 +206,8 @@ fun BookingsScreen(
 fun BookingItemCard(
   booking: Booking,
   onCancelBooking: () -> Unit,
-  onDeleteBooking: () -> Unit
+  onDeleteBooking: () -> Unit,
+  onReviewClick: () -> Unit = {}
 ) {
   val context = LocalContext.current
 
@@ -394,9 +393,22 @@ fun BookingItemCard(
         Spacer(modifier = Modifier.width(8.dp))
 
         Button(
+          onClick = onReviewClick,
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+          shape = RoundedCornerShape(8.dp),
+          contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+          Icon(Icons.Default.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+          Spacer(modifier = Modifier.width(4.dp))
+          Text("Rate Trip", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Button(
           onClick = {
             // Open WhatsApp with booking details
-            val msg = "Hello Hat Cab! Regarding Booking #${booking.id} (${booking.carName}) for ${booking.pickupCity}."
+            val msg = "Hello PAK E DRIVE! Regarding Booking #${booking.id} (${booking.carName}) for ${booking.pickupCity}."
             val url = "https://wa.me/923152292493?text=${Uri.encode(msg)}"
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             try { context.startActivity(intent) } catch (_: Exception) {}

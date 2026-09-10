@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Hat Cab"
+rootProject.name = "PAK E DRIVE"
 
 include(":app")

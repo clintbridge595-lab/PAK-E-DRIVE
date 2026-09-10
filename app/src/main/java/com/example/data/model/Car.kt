@@ -20,6 +20,8 @@ data class Car(
   val fuelType: String = "Petrol",
   val serviceType: String = "With Driver",
   val isFeatured: Boolean = true,
+  val rating: Double = 4.9,
+  val reviewCount: Int = 14,
   val description: String = "",
   val features: List<String> = listOf("Chauffeur Driven", "Full Chill AC", "Clean Interior", "Toll Tax Support")
 )

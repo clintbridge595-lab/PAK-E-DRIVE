@@ -68,15 +68,15 @@ fun SplashScreen(onTimeout: () -> Unit) {
     ) {
       Box(
         modifier = Modifier
-          .size(130.dp)
+          .size(150.dp)
           .clip(RoundedCornerShape(24.dp))
           .background(Color.White)
-          .padding(12.dp),
+          .padding(8.dp),
         contentAlignment = Alignment.Center
       ) {
         Image(
-          painter = painterResource(id = R.drawable.img_hatcab_logo),
-          contentDescription = "HAT CAB Logo",
+          painter = painterResource(id = R.drawable.pakedrive_logo),
+          contentDescription = "PAK E DRIVE Logo",
           contentScale = ContentScale.Fit,
           modifier = Modifier.fillMaxSize()
         )
@@ -86,11 +86,25 @@ fun SplashScreen(onTimeout: () -> Unit) {
 
       Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
-          text = "HAT CAB",
+          text = "PAK ",
           color = Color.White,
           fontSize = 30.sp,
           fontWeight = FontWeight.Black,
-          letterSpacing = 2.sp
+          letterSpacing = 1.sp
+        )
+        Text(
+          text = "E ",
+          color = Color(0xFFFBBF24), // Gold 'E' from logo
+          fontSize = 30.sp,
+          fontWeight = FontWeight.Black,
+          letterSpacing = 1.sp
+        )
+        Text(
+          text = "DRIVE",
+          color = Color.White,
+          fontSize = 30.sp,
+          fontWeight = FontWeight.Black,
+          letterSpacing = 1.sp
         )
         Text(
           text = " ®",
@@ -103,11 +117,11 @@ fun SplashScreen(onTimeout: () -> Unit) {
       Spacer(modifier = Modifier.height(10.dp))
 
       Text(
-        text = "Travel & Tourism",
-        color = Color.White,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.5.sp
+        text = "— RENT A CAR —",
+        color = Color(0xFFFBBF24),
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 2.sp
       )
     }
   }

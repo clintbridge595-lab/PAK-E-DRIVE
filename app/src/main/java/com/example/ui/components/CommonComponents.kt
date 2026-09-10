@@ -22,19 +22,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.R
 import com.example.data.model.Car
 import com.example.ui.theme.*
 
 @Composable
-fun HatCabTopBar(
-  onMenuClick: () -> Unit,
+fun PakEDriveTopBar(
+  selectedTab: Int = 0,
+  currentCity: String = "Karachi",
+  userName: String = "Mehdi",
   unreadCount: Int,
   onNotificationsClick: () -> Unit,
+  onCityClick: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   Surface(
-    color = NavyPrimary,
+    color = Color(0xFF132238),
     modifier = modifier.fillMaxWidth()
   ) {
     Row(
@@ -45,136 +49,123 @@ fun HatCabTopBar(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween
     ) {
-      // Left: Hamburger Menu Icon
-      IconButton(
-        onClick = onMenuClick,
-        modifier = Modifier.size(40.dp)
-      ) {
-        Icon(
-          imageVector = Icons.Default.Menu,
-          contentDescription = "Open Menu",
-          tint = Color.White,
-          modifier = Modifier.size(24.dp)
-        )
-      }
-
-      // Center: Logo & Brand Name
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(horizontal = 8.dp)
-      ) {
-        Box(
-          modifier = Modifier
-            .size(34.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White)
-            .padding(4.dp),
-          contentAlignment = Alignment.Center
+      if (selectedTab == 0) {
+        // Home Screen Top Bar (Left: Bell icon + City Selector, Right: Hello, Mehdi)
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.clickable(onClick = onCityClick)
         ) {
-          Image(
-            painter = painterResource(id = R.drawable.img_hatcab_logo),
-            contentDescription = "Hat Cab Logo",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
-          )
-        }
+          Box(modifier = Modifier.size(36.dp)) {
+            IconButton(
+              onClick = onNotificationsClick,
+              modifier = Modifier.fillMaxSize()
+            ) {
+              Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = "Notifications",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+              )
+            }
+            if (unreadCount > 0) {
+              Box(
+                modifier = Modifier
+                  .align(Alignment.TopEnd)
+                  .padding(top = 2.dp, end = 2.dp)
+                  .size(14.dp)
+                  .clip(CircleShape)
+                  .background(Color(0xFFEF4444)),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = unreadCount.toString(),
+                  color = Color.White,
+                  fontSize = 8.sp,
+                  fontWeight = FontWeight.Bold
+                )
+              }
+            }
+          }
 
-        Spacer(modifier = Modifier.width(8.dp))
+          Spacer(modifier = Modifier.width(4.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Text(
-            text = "HAT CAB",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
-          )
-          Text(
-            text = "®",
-            color = Color.White.copy(alpha = 0.8f),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 6.dp, start = 2.dp)
-          )
-        }
-      }
-
-      // Right: Notification Bell with Badge
-      Box(modifier = Modifier.size(40.dp)) {
-        IconButton(
-          onClick = onNotificationsClick,
-          modifier = Modifier.fillMaxSize()
-        ) {
-          Icon(
-            imageVector = Icons.Outlined.Notifications,
-            contentDescription = "Notifications",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-          )
-        }
-        if (unreadCount > 0) {
-          Box(
-            modifier = Modifier
-              .align(Alignment.TopEnd)
-              .padding(top = 4.dp, end = 4.dp)
-              .size(16.dp)
-              .clip(CircleShape)
-              .background(Color(0xFFE53935)),
-            contentAlignment = Alignment.Center
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 2.dp)
           ) {
             Text(
-              text = unreadCount.toString(),
+              text = currentCity,
               color = Color.White,
-              fontSize = 9.sp,
-              fontWeight = FontWeight.Bold
+              fontSize = 15.sp,
+              fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Icon(
+              imageVector = Icons.Default.KeyboardArrowDown,
+              contentDescription = "Select City",
+              tint = Color.White.copy(alpha = 0.8f),
+              modifier = Modifier.size(18.dp)
             )
           }
+        }
+
+        Text(
+          text = "Hello, $userName",
+          color = Color.White,
+          fontSize = 15.sp,
+          fontWeight = FontWeight.SemiBold
+        )
+      } else {
+        // Other tabs top bar with centered title
+        val title = when (selectedTab) {
+          1 -> "My Bookings"
+          2 -> "Search"
+          3 -> "Messages"
+          4 -> "Profile"
+          else -> "PAK E DRIVE"
+        }
+
+        Box(
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(36.dp),
+          contentAlignment = Alignment.Center
+        ) {
+          Text(
+            text = title,
+            color = Color.White,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
+          )
         }
       }
     }
   }
 }
 
-// Backwards compatibility alias
-@Composable
-fun PakEDriveTopBar(
-  selectedCity: String = "All Cities",
-  onCityClick: () -> Unit = {},
-  unreadCount: Int = 0,
-  onNotificationsClick: () -> Unit = {},
-  onCallHelplineClick: () -> Unit = {},
-  modifier: Modifier = Modifier
-) {
-  HatCabTopBar(
-    onMenuClick = onCityClick,
-    unreadCount = unreadCount,
-    onNotificationsClick = onNotificationsClick,
-    modifier = modifier
-  )
-}
-
 /**
- * Clean, high-end car card directly matching the reference video:
- * - Image with "Featured" dark navy badge on top-left
+ * Clean, normal 2-column vehicle card directly matching the reference video:
+ * - Car image with rounded top corners loaded via Coil
+ * - Top-left "Featured" navy badge
  * - Line 1: Name on left | Price on right
  * - Line 2: Variant on left
  * - Line 3: Route in green/teal
- * - Bottom: "Book Now" & "Details" buttons
+ * - Entire card clickable to book / view details
  */
 @Composable
 fun CarCard(
   car: Car,
   onViewDetails: () -> Unit,
-  onBookNow: () -> Unit,
+  onBookNow: () -> Unit = onViewDetails,
   modifier: Modifier = Modifier
 ) {
   Card(
     shape = RoundedCornerShape(12.dp),
     colors = CardDefaults.cardColors(containerColor = Color.White),
     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
     modifier = modifier
       .fillMaxWidth()
-      .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(12.dp))
       .clickable(onClick = onViewDetails)
   ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -182,122 +173,98 @@ fun CarCard(
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .height(150.dp)
-          .background(Color(0xFFF8F9FB)),
+          .height(115.dp)
+          .background(Color(0xFFF9FAFB)),
         contentAlignment = Alignment.Center
       ) {
-        Image(
-          painter = painterResource(id = car.imageRes),
+        AsyncImage(
+          model = car.imageRes,
           contentDescription = car.name,
           contentScale = ContentScale.Fit,
           modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
         )
 
         // "Featured" pill badge top-left
         if (car.isFeatured) {
           Surface(
             shape = RoundedCornerShape(4.dp),
-            color = NavyPrimary,
+            color = Color(0xFF132238),
             modifier = Modifier
-              .padding(10.dp)
+              .padding(6.dp)
               .align(Alignment.TopStart)
           ) {
             Text(
               text = "Featured",
               color = Color.White,
-              fontSize = 10.sp,
+              fontSize = 9.sp,
               fontWeight = FontWeight.Bold,
-              modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+              modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
             )
           }
         }
       }
 
-      // 2. Info details section
-      Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-        // Line 1: Car Name & Price
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Text(
-            text = car.name,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-          )
+      // 2. Info details section with clear, normalized typography hierarchy
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 10.dp, vertical = 8.dp)
+      ) {
+        // Line 1: Vehicle Name at the top
+        Text(
+          text = car.name,
+          fontSize = 13.5.sp,
+          fontWeight = FontWeight.Bold,
+          color = Color(0xFF111827),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis
+        )
 
-          Text(
-            text = if (car.priceDisplay.isNotBlank()) car.priceDisplay else "Rs. ${car.dailyRate}/day",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-          )
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Line 2: 10-Hour Rate as secondary, legible caption
+        val rateCaption = if (car.tenHourRate > 0) {
+          "10-Hour Rate: Rs. %,d".format(car.tenHourRate)
+        } else if (car.priceDisplay.isNotBlank()) {
+          car.priceDisplay
+        } else {
+          "Rs. %,d/day".format(car.dailyRate)
         }
 
-        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+          text = rateCaption,
+          fontSize = 11.5.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color(0xFF1E3A8A),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis
+        )
 
-        // Line 2: Variant
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Line 3: Model Variant / Specs
         Text(
           text = if (car.variant.isNotBlank()) car.variant else car.make,
-          fontSize = 13.sp,
+          fontSize = 10.5.sp,
           color = Color(0xFF6B7280),
           fontWeight = FontWeight.Normal,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
-        // Line 3: Route in emerald/teal green
+        // Line 4: Route in green/teal
         Text(
           text = car.routeSnippet,
-          fontSize = 13.sp,
-          color = Color(0xFF00897B), // Rich emerald green like the video
+          fontSize = 10.5.sp,
+          color = Color(0xFF00897B),
           fontWeight = FontWeight.Medium,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis
         )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Line 4: Action Buttons
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.End,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          OutlinedButton(
-            onClick = onViewDetails,
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyPrimary),
-            border = ButtonDefaults.outlinedButtonBorder.copy(
-              brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFD1D5DB))
-            ),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-            modifier = Modifier.height(34.dp)
-          ) {
-            Text("Details", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-          }
-
-          Spacer(modifier = Modifier.width(8.dp))
-
-          Button(
-            onClick = onBookNow,
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-            modifier = Modifier.height(34.dp)
-          ) {
-            Text("Book Now", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-          }
-        }
       }
     }
   }

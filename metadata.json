@@ -1,6 +1,6 @@
 {
-  "name": "Hat Cab",
-  "description": "Hat Cab - Travel & Tourism. Pakistan's trusted car rental, intercity and wapsi car booking service across Karachi, Lahore, Islamabad, and all cities.",
+  "name": "PAK E DRIVE",
+  "description": "PAK E DRIVE - Rent A Car. Pakistan's trusted car rental, intercity and wapsi car booking service across Karachi, Lahore, Islamabad, and all cities.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

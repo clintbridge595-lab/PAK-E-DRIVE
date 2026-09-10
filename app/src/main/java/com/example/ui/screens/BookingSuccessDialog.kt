@@ -109,7 +109,7 @@ fun BookingSuccessDialog(
 
         // Stepper
         Column(modifier = Modifier.fillMaxWidth()) {
-          TrackingStepItem(title = "Booking Registered", subtitle = "Confirmed in Hat Cab system", isCompleted = true)
+          TrackingStepItem(title = "Booking Registered", subtitle = "Confirmed in PAK E DRIVE system", isCompleted = true)
           TrackingStepItem(title = "Chauffeur Assigned", subtitle = "${booking.driverName} (${booking.driverPhone})", isCompleted = true)
           TrackingStepItem(title = "Doorstep Vehicle Arrival", subtitle = "Pickup at ${booking.pickupAddress}", isCompleted = false)
         }

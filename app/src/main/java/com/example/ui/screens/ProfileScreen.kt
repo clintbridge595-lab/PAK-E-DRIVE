@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainViewModel
+import com.example.util.AppLanguage
 
 @Composable
 fun ProfileScreen(
@@ -34,6 +35,7 @@ fun ProfileScreen(
   val context = LocalContext.current
   val profile by viewModel.userProfile.collectAsState()
   val bookings by viewModel.bookings.collectAsState()
+  val currentLanguage by viewModel.currentLanguage.collectAsState()
 
   var isEditing by remember { mutableStateOf(false) }
   var editName by remember(profile) { mutableStateOf(profile.name) }
@@ -69,11 +71,11 @@ fun ProfileScreen(
             .size(80.dp)
             .clip(CircleShape)
             .background(Color.White)
-            .border(3.dp, OrangeAccent, CircleShape),
+            .border(2.dp, Color(0xFFE2E8F0), CircleShape),
           contentAlignment = Alignment.Center
         ) {
           Text(
-            text = profile.name.take(2).uppercase().ifBlank { "HC" },
+            text = profile.name.take(2).uppercase().ifBlank { "PD" },
             color = NavyPrimary,
             fontSize = 28.sp,
             fontWeight = FontWeight.Black
@@ -106,7 +108,7 @@ fun ProfileScreen(
               verticalAlignment = Alignment.CenterVertically,
               modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
-              Icon(Icons.Default.Verified, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(16.dp))
+              Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF60A5FA), modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
               Text(
                 text = "Verified Customer • ${bookings.size} Trips",
@@ -119,7 +121,7 @@ fun ProfileScreen(
         } else {
           Button(
             onClick = onOpenLogin,
-            colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
             shape = RoundedCornerShape(8.dp)
           ) {
             Text("Login / Register via OTP", color = Color.White, fontWeight = FontWeight.Bold)
@@ -372,6 +374,85 @@ fun ProfileScreen(
             try { context.startActivity(intent) } catch (_: Exception) {}
           }
         )
+
+        HorizontalDivider(color = BorderStroke, modifier = Modifier.padding(vertical = 8.dp))
+
+        // FAQ & Support Center Dialog
+        SupportActionRow(
+          icon = Icons.Default.HelpOutline,
+          title = "Rental FAQs & Policy Guide",
+          subtitle = "Chauffeur rules, fuel policy & cancellation terms",
+          onClick = {
+            viewModel.setShowFaqSupport(true)
+          }
+        )
+      }
+    }
+
+    // App Preferences & Admin Card
+    Card(
+      shape = RoundedCornerShape(16.dp),
+      colors = CardDefaults.cardColors(containerColor = Color.White),
+      elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 6.dp)
+        .border(1.dp, BorderStroke, RoundedCornerShape(16.dp))
+    ) {
+      Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+          text = "App Settings",
+          fontSize = 15.sp,
+          fontWeight = FontWeight.Bold,
+          color = NavyPrimary
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Language toggle row
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Translate, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+              Text("Language / زبان", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+              Text(
+                text = if (currentLanguage == AppLanguage.URDU) "اردو (Urdu Active)" else "English (US)",
+                fontSize = 11.sp,
+                color = TextSecondaryMuted
+              )
+            }
+          }
+
+          Button(
+            onClick = { viewModel.toggleLanguage() },
+            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary.copy(alpha = 0.1f)),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+          ) {
+            Text(
+              text = if (currentLanguage == AppLanguage.URDU) "Switch to English" else "اردو میں بدلیں",
+              color = NavyPrimary,
+              fontSize = 11.sp,
+              fontWeight = FontWeight.Bold
+            )
+          }
+        }
+
+        HorizontalDivider(color = BorderStroke, modifier = Modifier.padding(vertical = 10.dp))
+
+        // Admin Portal
+        SupportActionRow(
+          icon = Icons.Default.AdminPanelSettings,
+          title = "Admin Portal",
+          subtitle = "Internal system management & diagnostics",
+          onClick = {
+            viewModel.setShowBuildLogAnalyzer(true)
+          }
+        )
       }
     }
 
@@ -438,7 +519,7 @@ fun ProfileScreen(
       },
       text = {
         Text(
-          "Are you sure you want to delete your Hat Cab account? This will permanently wipe all your active and past booking records, profile preferences, and trip receipts from this device.",
+          "Are you sure you want to delete your PAK E DRIVE account? This will permanently wipe all your active and past booking records, profile preferences, and trip receipts from this device.",
           fontSize = 13.sp,
           color = TextPrimaryDark
         )

@@ -21,10 +21,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AppNotification
+import com.example.util.AppLanguage
+import com.example.util.LocaleStrings
 
 @Composable
 fun NotificationsDialog(
   notifications: List<AppNotification>,
+  currentLanguage: AppLanguage = AppLanguage.ENGLISH,
+  onMarkAllRead: () -> Unit = {},
+  onClearAll: () -> Unit = {},
+  onDeleteNotification: (String) -> Unit = {},
   onDismiss: () -> Unit
 ) {
   Dialog(onDismissRequest = onDismiss) {
@@ -33,7 +39,7 @@ fun NotificationsDialog(
       colors = CardDefaults.cardColors(containerColor = Color.White),
       modifier = Modifier
         .fillMaxWidth()
-        .fillMaxHeight(0.7f)
+        .fillMaxHeight(0.75f)
     ) {
       Column(
         modifier = Modifier
@@ -48,7 +54,12 @@ fun NotificationsDialog(
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Notifications, contentDescription = null, tint = NavyPrimary)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Alerts & Notifications", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+            Text(
+              text = LocaleStrings.get("alerts_notifications", currentLanguage),
+              fontSize = 15.sp,
+              fontWeight = FontWeight.Bold,
+              color = NavyPrimary
+            )
           }
 
           IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) {
@@ -56,11 +67,52 @@ fun NotificationsDialog(
           }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        // Action buttons bar: Mark all read & Clear all
+        if (notifications.isNotEmpty()) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            TextButton(
+              onClick = onMarkAllRead,
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+              Icon(Icons.Default.DoneAll, contentDescription = null, modifier = Modifier.size(16.dp), tint = NavyPrimary)
+              Spacer(modifier = Modifier.width(4.dp))
+              Text(LocaleStrings.get("mark_all_read", currentLanguage), fontSize = 11.sp, color = NavyPrimary, fontWeight = FontWeight.SemiBold)
+            }
+
+            TextButton(
+              onClick = onClearAll,
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+              Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextSecondaryMuted)
+              Spacer(modifier = Modifier.width(4.dp))
+              Text(LocaleStrings.get("clear_all", currentLanguage), fontSize = 11.sp, color = TextSecondaryMuted)
+            }
+          }
+        } else {
+          Spacer(modifier = Modifier.height(12.dp))
+        }
 
         if (notifications.isEmpty()) {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No new alerts right now", color = TextSecondaryMuted, fontSize = 13.sp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+              Box(
+                modifier = Modifier
+                  .size(48.dp)
+                  .clip(CircleShape)
+                  .background(Color(0xFFF1F5F9)),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(Icons.Default.NotificationsNone, contentDescription = null, tint = TextSecondaryMuted)
+              }
+              Spacer(modifier = Modifier.height(8.dp))
+              Text(LocaleStrings.get("no_alerts", currentLanguage), color = TextSecondaryMuted, fontSize = 13.sp)
+            }
           }
         } else {
           LazyColumn(
@@ -70,7 +122,7 @@ fun NotificationsDialog(
             items(notifications, key = { it.id }) { notif ->
               Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = Color(0xFFF7F9FC),
+                color = if (!notif.isRead) Color(0xFFEFF6FF) else Color(0xFFF7F9FC),
                 modifier = Modifier.fillMaxWidth()
               ) {
                 Row(
@@ -83,18 +135,49 @@ fun NotificationsDialog(
                     modifier = Modifier
                       .size(32.dp)
                       .clip(CircleShape)
-                      .background(Color(0xFFE2E8F0)),
+                      .background(if (!notif.isRead) NavyPrimary.copy(alpha = 0.15f) else Color(0xFFE2E8F0)),
                     contentAlignment = Alignment.Center
                   ) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(16.dp))
+                    Icon(
+                      Icons.Default.Info,
+                      contentDescription = null,
+                      tint = if (!notif.isRead) NavyPrimary else TextSecondaryMuted,
+                      modifier = Modifier.size(16.dp)
+                    )
                   }
                   Spacer(modifier = Modifier.width(10.dp))
                   Column(modifier = Modifier.weight(1f)) {
-                    Text(text = notif.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Text(text = notif.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+                      if (!notif.isRead) {
+                        Box(
+                          modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(NavyPrimary)
+                        )
+                      }
+                    }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(text = notif.message, fontSize = 11.sp, color = TextSecondaryMuted, lineHeight = 15.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = notif.time, fontSize = 9.sp, color = OrangeAccent, fontWeight = FontWeight.Medium)
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Text(text = notif.time, fontSize = 9.sp, color = OrangeAccent, fontWeight = FontWeight.Medium)
+                      IconButton(
+                        onClick = { onDeleteNotification(notif.id) },
+                        modifier = Modifier.size(20.dp)
+                      ) {
+                        Icon(Icons.Default.Close, contentDescription = "Delete", tint = Color(0xFF94A3B8), modifier = Modifier.size(14.dp))
+                      }
+                    }
                   }
                 }
               }

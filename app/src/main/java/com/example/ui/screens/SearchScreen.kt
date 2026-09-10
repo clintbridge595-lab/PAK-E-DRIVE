@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -199,11 +202,13 @@ fun SearchScreen(
       }
     }
 
-    // Vehicle Cards List
-    LazyColumn(
+    // Vehicle Cards 2-Column Grid
+    LazyVerticalGrid(
+      columns = GridCells.Fixed(2),
       modifier = Modifier.fillMaxSize(),
-      contentPadding = PaddingValues(top = 12.dp, bottom = 90.dp, start = 16.dp, end = 16.dp),
-      verticalArrangement = Arrangement.spacedBy(14.dp)
+      contentPadding = PaddingValues(top = 12.dp, bottom = 90.dp, start = 12.dp, end = 12.dp),
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
       items(filteredFleet, key = { it.id }) { car ->
         CarCard(

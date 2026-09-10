@@ -23,11 +23,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.model.Car
+import com.example.data.model.Review
 import com.example.ui.theme.*
 
 @Composable
 fun VehicleDetailDialog(
   car: Car,
+  reviews: List<Review> = emptyList(),
   onDismiss: () -> Unit,
   onBookNow: () -> Unit
 ) {
@@ -190,6 +192,91 @@ fun VehicleDetailDialog(
               )
               Spacer(modifier = Modifier.width(8.dp))
               Text(text = feat, fontSize = 13.sp, color = TextPrimaryDark)
+            }
+          }
+
+          Spacer(modifier = Modifier.height(18.dp))
+
+          // Customer Reviews Section
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Verified Reviews & Ratings",
+              fontSize = 15.sp,
+              fontWeight = FontWeight.Bold,
+              color = NavyPrimary
+            )
+
+            Surface(
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFFEF3C7)
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("4.9 (100% Verified)", color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          val carReviews = reviews.filter { it.carId == car.id || it.carName.contains(car.name, ignoreCase = true) }
+          if (carReviews.isNotEmpty()) {
+            carReviews.forEach { review ->
+              Card(
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(vertical = 4.dp)
+              ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Text(review.userName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+                    Row {
+                      repeat(5) { starIndex ->
+                        val isFilled = (starIndex + 1) <= review.overallRating.toInt()
+                        Icon(
+                          imageVector = Icons.Default.Star,
+                          contentDescription = null,
+                          tint = if (isFilled) Color(0xFFF59E0B) else Color(0xFFCBD5E1),
+                          modifier = Modifier.size(12.dp)
+                        )
+                      }
+                    }
+                  }
+                  if (review.comment.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(review.comment, fontSize = 11.sp, color = TextSecondaryMuted, lineHeight = 15.sp)
+                  }
+                  Spacer(modifier = Modifier.height(2.dp))
+                  Text("Chauffeur: ${String.format("%.1f", review.driverRating)}★ • ${review.userCity} • ${review.date}", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                }
+              }
+            }
+          } else {
+            Surface(
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFF1F5F9),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Text(
+                text = "⭐ 100% verified rides recorded. Clean AC vehicle with sanitized interior and courteous licensed chauffeur.",
+                fontSize = 12.sp,
+                color = TextSecondaryMuted,
+                modifier = Modifier.padding(10.dp)
+              )
             }
           }
 

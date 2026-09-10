@@ -28,10 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.components.HatCabTopBar
+import com.example.ui.components.BuildLogAnalyzerDialog
+import com.example.ui.components.PakEDriveTopBar
 import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainViewModel
+import com.example.util.NetworkMonitor
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -47,7 +49,7 @@ class MainActivity : ComponentActivity() {
         if (showSplash) {
           SplashScreen(onTimeout = { showSplash = false })
         } else {
-          HatCabApp(viewModel = viewModel)
+          PakEDriveApp(viewModel = viewModel)
         }
       }
     }
@@ -55,7 +57,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun HatCabApp(viewModel: MainViewModel) {
+fun PakEDriveApp(viewModel: MainViewModel) {
   val context = LocalContext.current
   val coroutineScope = rememberCoroutineScope()
   val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -69,7 +71,36 @@ fun HatCabApp(viewModel: MainViewModel) {
   val confirmedBooking by viewModel.confirmedBooking.collectAsState()
   val showAuthDialog by viewModel.showAuthDialog.collectAsState()
   val showNotifications by viewModel.showNotifications.collectAsState()
+  val showFaqSupport by viewModel.showFaqSupport.collectAsState()
+  val showBuildLogAnalyzer by viewModel.showBuildLogAnalyzer.collectAsState()
+  val reviewBooking by viewModel.reviewBooking.collectAsState()
+  val reviews by viewModel.allReviews.collectAsState()
+  val currentLanguage by viewModel.currentLanguage.collectAsState()
+  val unreadCount by viewModel.unreadNotificationCount.collectAsState()
   var showCitySelector by remember { mutableStateOf(false) }
+
+  // Network state monitoring
+  val networkMonitor = remember { NetworkMonitor(context) }
+  val isOnline by networkMonitor.isOnline.collectAsState(initial = true)
+  val snackbarHostState = remember { SnackbarHostState() }
+  var wasOffline by remember { mutableStateOf(false) }
+
+  LaunchedEffect(isOnline) {
+    if (!isOnline) {
+      wasOffline = true
+      snackbarHostState.showSnackbar(
+        message = "⚠️ No Internet Connection — Please check mobile data or Wi-Fi to book cars & view live rates.",
+        duration = SnackbarDuration.Indefinite,
+        actionLabel = "Dismiss"
+      )
+    } else if (wasOffline) {
+      wasOffline = false
+      snackbarHostState.showSnackbar(
+        message = "✅ Back Online — Internet connection restored.",
+        duration = SnackbarDuration.Short
+      )
+    }
+  }
 
   ModalNavigationDrawer(
     drawerState = drawerState,
@@ -89,15 +120,15 @@ fun HatCabApp(viewModel: MainViewModel) {
           Column {
             Box(
               modifier = Modifier
-                .size(60.dp)
+                .size(64.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.White)
-                .padding(6.dp),
+                .padding(4.dp),
               contentAlignment = Alignment.Center
             ) {
               Image(
-                painter = painterResource(id = R.drawable.img_hatcab_logo),
-                contentDescription = "Hat Cab Logo",
+                painter = painterResource(id = R.drawable.pakedrive_logo),
+                contentDescription = "PAK E DRIVE Logo",
                 modifier = Modifier.fillMaxSize()
               )
             }
@@ -179,7 +210,7 @@ fun HatCabApp(viewModel: MainViewModel) {
             coroutineScope.launch { drawerState.close() }
             val intent = Intent(
               Intent.ACTION_VIEW,
-              Uri.parse("https://wa.me/923152292493?text=Assalam-o-Alaikum%20Hat%20Cab!%20I%20need%20assistance.")
+              Uri.parse("https://wa.me/923152292493?text=Assalam-o-Alaikum%20PAK%20E%20DRIVE!%20I%20need%20assistance.")
             )
             try { context.startActivity(intent) } catch (_: Exception) {}
           },
@@ -218,7 +249,7 @@ fun HatCabApp(viewModel: MainViewModel) {
             .fillMaxWidth()
             .padding(16.dp)
         ) {
-          Text("Hat Cab Travel & Tourism", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF374151))
+          Text("PAK E DRIVE - Rent A Car", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF374151))
           Text("Helpline: +92 315 2292493 • Karachi, Pakistan", fontSize = 11.sp, color = Color(0xFF9CA3AF))
           Text("Version 2.4.0 (Enterprise Fleet)", fontSize = 10.sp, color = Color(0xFF9CA3AF))
         }
@@ -226,26 +257,56 @@ fun HatCabApp(viewModel: MainViewModel) {
     }
   ) {
     Scaffold(
+      snackbarHost = {
+        SnackbarHost(hostState = snackbarHostState)
+      },
       topBar = {
-        HatCabTopBar(
-          onMenuClick = {
-            coroutineScope.launch { drawerState.open() }
-          },
-          unreadCount = notifications.size,
-          onNotificationsClick = { viewModel.setShowNotifications(true) }
-        )
+        Column {
+          PakEDriveTopBar(
+            selectedTab = selectedTab,
+            currentCity = selectedCity,
+            userName = userProfile.name.split(" ").firstOrNull() ?: "Mehdi",
+            unreadCount = unreadCount,
+            onNotificationsClick = { viewModel.setShowNotifications(true) },
+            onCityClick = { showCitySelector = true }
+          )
+          if (!isOnline) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFDC2626))
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.Center
+            ) {
+              Icon(
+                Icons.Default.WifiOff,
+                contentDescription = "Offline",
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+              )
+              Spacer(modifier = Modifier.width(8.dp))
+              Text(
+                text = "No Internet Connection • Offline Mode",
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+              )
+            }
+          }
+        }
       },
       bottomBar = {
         NavigationBar(
           containerColor = Color.White,
-          tonalElevation = 6.dp,
+          tonalElevation = 4.dp,
           modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
         ) {
           val navItems = listOf(
             Triple("Home", Icons.Filled.Home, Icons.Outlined.Home),
-            Triple("Bookings", Icons.Filled.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
-            Triple("Fleet", Icons.Filled.DirectionsCar, Icons.Outlined.DirectionsCar),
-            Triple("Support", Icons.Filled.Chat, Icons.Outlined.Chat),
+            Triple("My Bookings", Icons.Filled.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
+            Triple("Search", Icons.Filled.Search, Icons.Outlined.Search),
+            Triple("Messages", Icons.Filled.ChatBubble, Icons.Outlined.ChatBubbleOutline),
             Triple("Profile", Icons.Filled.Person, Icons.Outlined.Person)
           )
 
@@ -253,12 +314,15 @@ fun HatCabApp(viewModel: MainViewModel) {
             val isSelected = selectedTab == index
             NavigationBarItem(
               selected = isSelected,
-              onClick = { viewModel.setTab(index) },
+              onClick = {
+                viewModel.setTab(index)
+                PakEDriveApplication.logUserEngagement("tab_selected", item.first)
+              },
               icon = {
                 Icon(
                   imageVector = if (isSelected) item.second else item.third,
                   contentDescription = item.first,
-                  tint = if (isSelected) OrangeAccent else Color(0xFF6B7280)
+                  tint = if (isSelected) Color(0xFF132238) else Color(0xFF6B7280)
                 )
               },
               label = {
@@ -266,11 +330,11 @@ fun HatCabApp(viewModel: MainViewModel) {
                   text = item.first,
                   fontSize = 11.sp,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                  color = if (isSelected) NavyPrimary else Color(0xFF6B7280)
+                  color = if (isSelected) Color(0xFF132238) else Color(0xFF6B7280)
                 )
               },
               colors = NavigationBarItemDefaults.colors(
-                indicatorColor = Color(0xFFEFF4FC)
+                indicatorColor = Color(0xFFE2E8F0)
               )
             )
           }
@@ -312,6 +376,7 @@ fun HatCabApp(viewModel: MainViewModel) {
   detailCar?.let { car ->
     VehicleDetailDialog(
       car = car,
+      reviews = reviews,
       onDismiss = { viewModel.closeCarDetail() },
       onBookNow = {
         viewModel.closeCarDetail()
@@ -349,7 +414,35 @@ fun HatCabApp(viewModel: MainViewModel) {
   if (showNotifications) {
     NotificationsDialog(
       notifications = notifications,
+      currentLanguage = currentLanguage,
+      onMarkAllRead = { viewModel.markAllNotificationsAsRead() },
+      onClearAll = { viewModel.clearAllNotifications() },
+      onDeleteNotification = { id -> viewModel.deleteNotification(id) },
       onDismiss = { viewModel.setShowNotifications(false) }
+    )
+  }
+
+  if (showFaqSupport) {
+    FaqSupportDialog(
+      currentLanguage = currentLanguage,
+      onDismiss = { viewModel.setShowFaqSupport(false) }
+    )
+  }
+
+  if (showBuildLogAnalyzer) {
+    BuildLogAnalyzerDialog(
+      onDismiss = { viewModel.setShowBuildLogAnalyzer(false) }
+    )
+  }
+
+  reviewBooking?.let { booking ->
+    ReviewDialog(
+      booking = booking,
+      currentLanguage = currentLanguage,
+      onDismiss = { viewModel.closeReviewDialog() },
+      onSubmitReview = { carRating, driverRating, comment ->
+        viewModel.submitReview(carRating, driverRating, comment, booking)
+      }
     )
   }
 

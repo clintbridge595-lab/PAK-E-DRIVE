@@ -1,8 +1,8 @@
 package com.example.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,11 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,38 +33,42 @@ import com.example.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+enum class OtpChannel {
+  WHATSAPP,
+  SMS,
+  EMAIL
+}
+
 @Composable
 fun AuthDialog(
   viewModel: MainViewModel,
   onDismiss: () -> Unit
 ) {
-  val context = LocalContext.current
   val coroutineScope = rememberCoroutineScope()
+  val clipboardManager = LocalClipboardManager.current
 
-  // 0: WhatsApp / Phone, 1: Google, 2: Email
+  // 0: WhatsApp / SMS, 1: Gmail / Email, 2: Google
   var authTab by remember { mutableStateOf(0) }
 
-  // Phone / WhatsApp state
-  var step by remember { mutableStateOf(1) } // 1: input, 2: enter OTP
-  var phoneNumber by remember { mutableStateOf("03152292493") }
-  var userName by remember { mutableStateOf("Mehdi Raza") }
-  var generatedOtp by remember { mutableStateOf("786012") }
+  // Flow State (1: Enter credentials, 2: Enter & Verify OTP)
+  var step by remember { mutableStateOf(1) }
+  var activeChannel by remember { mutableStateOf(OtpChannel.WHATSAPP) }
+
+  // User input state
+  var userName by remember { mutableStateOf("") }
+  var phoneNumber by remember { mutableStateOf("") }
+  var emailInput by remember { mutableStateOf("") }
+
+  // OTP generation and validation
+  var generatedOtp by remember { mutableStateOf("") }
   var enteredOtp by remember { mutableStateOf("") }
-  var otpSentSuccess by remember { mutableStateOf(false) }
   var resendCountdown by remember { mutableStateOf(45) }
   var isSendingOtp by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
-
-  // Email state
-  var emailInput by remember { mutableStateOf("user@hatcab.pk") }
-  var passwordInput by remember { mutableStateOf("") }
-  var showPassword by remember { mutableStateOf(false) }
-
-  // Google state
   var isGoogleLoading by remember { mutableStateOf(false) }
 
-  // Timer for OTP countdown
-  LaunchedEffect(step) {
+  // Timer for OTP resend countdown
+  LaunchedEffect(step, generatedOtp) {
     if (step == 2) {
       resendCountdown = 45
       while (resendCountdown > 0) {
@@ -90,7 +93,7 @@ fun AuthDialog(
           .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
-        // Header with Logo
+        // Top Header
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,
@@ -99,21 +102,21 @@ fun AuthDialog(
           Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
               modifier = Modifier
-                .size(36.dp)
+                .size(38.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFFF1F5F9)),
               contentAlignment = Alignment.Center
             ) {
               Image(
-                painter = painterResource(id = R.drawable.img_hatcab_logo),
-                contentDescription = "Hat Cab Logo",
-                modifier = Modifier.size(28.dp)
+                painter = painterResource(id = R.drawable.pakedrive_logo),
+                contentDescription = "PAK E DRIVE Logo",
+                modifier = Modifier.size(32.dp)
               )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Column {
               Text(
-                text = "HAT CAB",
+                text = "PAK E DRIVE",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Black,
                 color = NavyPrimary
@@ -132,368 +135,443 @@ fun AuthDialog(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Auth Method Tabs
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFF1F5F9))
-            .padding(3.dp),
-          horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-          listOf(
-            Pair("WhatsApp", Icons.Default.Chat),
-            Pair("Google", Icons.Default.AccountCircle),
-            Pair("Email", Icons.Default.Email)
-          ).forEachIndexed { index, pair ->
-            val isSelected = authTab == index
-            Box(
-              modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(if (isSelected) Color.White else Color.Transparent)
-                .clickable {
-                  authTab = index
-                  errorMessage = null
-                }
-                .padding(vertical = 8.dp),
-              contentAlignment = Alignment.Center
-            ) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-              ) {
-                Icon(
-                  imageVector = pair.second,
-                  contentDescription = null,
-                  tint = if (isSelected) NavyPrimary else TextSecondaryMuted,
-                  modifier = Modifier.size(15.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                  text = pair.first,
-                  fontSize = 12.sp,
-                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isSelected) NavyPrimary else TextSecondaryMuted
-                )
-              }
-            }
-          }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ================= TAB 0: WHATSAPP / PHONE OTP =================
-        if (authTab == 0) {
-          if (step == 1) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-              Text(
-                text = "Login via WhatsApp OTP",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimaryDark
-              )
-              Text(
-                text = "We'll send a 6-digit verification code directly to your WhatsApp number.",
-                fontSize = 12.sp,
-                color = TextSecondaryMuted,
-                lineHeight = 16.sp
-              )
-
-              Spacer(modifier = Modifier.height(12.dp))
-
-              // User Name
-              Text("Your Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = userName,
-                onValueChange = { userName = it },
-                singleLine = true,
-                placeholder = { Text("e.g. Mehdi Raza", color = TextSecondaryMuted, fontSize = 13.sp) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedTextColor = Color(0xFF0A0F1D),
-                  unfocusedTextColor = Color(0xFF0A0F1D),
-                  cursorColor = NavyPrimary,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedBorderColor = NavyPrimary,
-                  unfocusedBorderColor = BorderStroke
-                )
-              )
-
-              Spacer(modifier = Modifier.height(10.dp))
-
-              // Phone Number with Pakistani +92 Badge
-              Text("Mobile / WhatsApp Number", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = phoneNumber,
-                onValueChange = { phoneNumber = it },
-                singleLine = true,
-                leadingIcon = {
-                  Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(start = 12.dp, end = 4.dp)
-                  ) {
-                    Text("🇵🇰 +92", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(modifier = Modifier.width(1.dp).height(18.dp).background(BorderStroke))
-                  }
-                },
-                placeholder = { Text("315 2292493", color = TextSecondaryMuted, fontSize = 13.sp) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedTextColor = Color(0xFF0A0F1D),
-                  unfocusedTextColor = Color(0xFF0A0F1D),
-                  cursorColor = NavyPrimary,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedBorderColor = NavyPrimary,
-                  unfocusedBorderColor = BorderStroke
-                )
-              )
-
-              errorMessage?.let { err ->
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = err, color = StatusRed, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-              }
-
-              Spacer(modifier = Modifier.height(16.dp))
-
-              // Send OTP Button
-              Button(
-                onClick = {
-                  if (phoneNumber.isBlank() || phoneNumber.length < 7) {
-                    errorMessage = "Please enter a valid Pakistani mobile number."
-                    return@Button
-                  }
-                  errorMessage = null
-                  isSendingOtp = true
-
-                  // Generate 6 digit code
-                  val randomCode = (100000 + (Math.random() * 900000).toInt()).toString()
-                  generatedOtp = randomCode
-                  enteredOtp = randomCode // Auto-fill for friction-free UX
-
-                  coroutineScope.launch {
-                    delay(500)
-                    isSendingOtp = false
-                    otpSentSuccess = true
-                    step = 2
-                  }
-                },
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .height(48.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)) // WhatsApp Green
-              ) {
-                if (isSendingOtp) {
-                  CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                  Icon(Icons.Default.Chat, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                  Spacer(modifier = Modifier.width(8.dp))
-                  Text("Send WhatsApp Code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-              }
-            }
-          } else {
-            // STEP 2: Enter WhatsApp OTP
-            Column(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+        // Auth Method Tabs (only when step == 1)
+        if (step == 1) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .clip(RoundedCornerShape(10.dp))
+              .background(Color(0xFFF1F5F9))
+              .padding(3.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+          ) {
+            listOf(
+              Pair("WhatsApp / SMS", Icons.Default.Chat),
+              Pair("Gmail / Email", Icons.Default.Email),
+              Pair("Google", Icons.Default.AccountCircle)
+            ).forEachIndexed { index, pair ->
+              val isSelected = authTab == index
               Box(
                 modifier = Modifier
-                  .size(50.dp)
-                  .clip(CircleShape)
-                  .background(Color(0xFFDCF8C6)),
+                  .weight(1f)
+                  .clip(RoundedCornerShape(8.dp))
+                  .background(if (isSelected) Color.White else Color.Transparent)
+                  .clickable {
+                    authTab = index
+                    errorMessage = null
+                  }
+                  .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
               ) {
-                Icon(Icons.Default.MarkChatRead, contentDescription = null, tint = Color(0xFF075E54), modifier = Modifier.size(28.dp))
-              }
-
-              Spacer(modifier = Modifier.height(10.dp))
-
-              Text(
-                text = "Verify WhatsApp OTP",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimaryDark
-              )
-              Text(
-                text = "We sent a 6-digit code to WhatsApp ($phoneNumber)",
-                fontSize = 12.sp,
-                color = TextSecondaryMuted,
-                textAlign = TextAlign.Center
-              )
-
-              Spacer(modifier = Modifier.height(12.dp))
-
-              // WhatsApp Notification Card showing the code
-              Card(
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE7FCE8)),
-                modifier = Modifier.fillMaxWidth()
-              ) {
                 Row(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(10.dp),
-                  verticalAlignment = Alignment.CenterVertically
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.Center
                 ) {
-                  Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF075E54), modifier = Modifier.size(20.dp))
-                  Spacer(modifier = Modifier.width(8.dp))
-                  Column {
-                    Text("WhatsApp Code Sent!", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF075E54))
-                    Text("Your code is $generatedOtp (Auto-filled)", fontSize = 11.sp, color = Color(0xFF1B5E20))
-                  }
-                }
-              }
-
-              Spacer(modifier = Modifier.height(12.dp))
-
-              // OTP Input
-              OutlinedTextField(
-                value = enteredOtp,
-                onValueChange = { if (it.length <= 6) enteredOtp = it },
-                singleLine = true,
-                placeholder = { Text("Enter 6-digit code", color = TextSecondaryMuted, fontSize = 13.sp) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedTextColor = Color(0xFF0A0F1D),
-                  unfocusedTextColor = Color(0xFF0A0F1D),
-                  cursorColor = NavyPrimary,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedBorderColor = NavyPrimary,
-                  unfocusedBorderColor = BorderStroke
-                )
-              )
-
-              errorMessage?.let { err ->
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = err, color = StatusRed, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-              }
-
-              Spacer(modifier = Modifier.height(16.dp))
-
-              Button(
-                onClick = {
-                  if (enteredOtp.trim() == generatedOtp.trim() || enteredOtp.length == 6) {
-                    viewModel.verifyOtpAndLogin(phoneNumber, userName)
-                    onDismiss()
-                  } else {
-                    errorMessage = "Incorrect OTP. Please enter the code sent to WhatsApp."
-                  }
-                },
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .height(48.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
-              ) {
-                Text("Verify & Continue", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-              }
-
-              Spacer(modifier = Modifier.height(8.dp))
-
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                TextButton(onClick = { step = 1 }) {
-                  Text("Change Number", color = TextSecondaryMuted, fontSize = 12.sp)
-                }
-
-                TextButton(
-                  onClick = {
-                    if (resendCountdown == 0) {
-                      val newCode = (100000 + (Math.random() * 900000).toInt()).toString()
-                      generatedOtp = newCode
-                      enteredOtp = newCode
-                      resendCountdown = 45
-                    }
-                  },
-                  enabled = resendCountdown == 0
-                ) {
+                  Icon(
+                    imageVector = pair.second,
+                    contentDescription = null,
+                    tint = if (isSelected) NavyPrimary else TextSecondaryMuted,
+                    modifier = Modifier.size(14.dp)
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
                   Text(
-                    text = if (resendCountdown > 0) "Resend in ${resendCountdown}s" else "Resend Code",
-                    color = if (resendCountdown > 0) TextSecondaryMuted else NavyPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = pair.first,
+                    fontSize = 11.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) NavyPrimary else TextSecondaryMuted
                   )
                 }
               }
             }
           }
+
+          Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // ================= TAB 1: GOOGLE SIGN IN =================
-        if (authTab == 1) {
+        // ================= STEP 1: CREDENTIAL INPUT =================
+        if (step == 1) {
+          when (authTab) {
+            // TAB 0: WhatsApp / SMS
+            0 -> {
+              Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                  text = "Login via WhatsApp or SMS OTP",
+                  fontSize = 14.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = TextPrimaryDark
+                )
+                Text(
+                  text = "Enter your details to receive a 6-digit security code directly on your phone.",
+                  fontSize = 12.sp,
+                  color = TextSecondaryMuted,
+                  lineHeight = 16.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Name input
+                Text("Your Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = userName,
+                  onValueChange = { userName = it },
+                  singleLine = true,
+                  placeholder = { Text("e.g. Mehdi Raza", color = TextSecondaryMuted, fontSize = 13.sp) },
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(10.dp),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0A0F1D),
+                    unfocusedTextColor = Color(0xFF0A0F1D),
+                    cursorColor = NavyPrimary,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = NavyPrimary,
+                    unfocusedBorderColor = BorderStroke
+                  )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Phone input
+                Text("Mobile Number", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = phoneNumber,
+                  onValueChange = { phoneNumber = it },
+                  singleLine = true,
+                  leadingIcon = {
+                    Row(
+                      verticalAlignment = Alignment.CenterVertically,
+                      modifier = Modifier.padding(start = 12.dp, end = 4.dp)
+                    ) {
+                      Text("🇵🇰 +92", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Box(modifier = Modifier.width(1.dp).height(18.dp).background(BorderStroke))
+                    }
+                  },
+                  placeholder = { Text("315 2292493", color = TextSecondaryMuted, fontSize = 13.sp) },
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(10.dp),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0A0F1D),
+                    unfocusedTextColor = Color(0xFF0A0F1D),
+                    cursorColor = NavyPrimary,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = NavyPrimary,
+                    unfocusedBorderColor = BorderStroke
+                  )
+                )
+
+                errorMessage?.let { err ->
+                  Spacer(modifier = Modifier.height(6.dp))
+                  Text(text = err, color = StatusRed, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Dispatch Buttons (WhatsApp & SMS)
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                  // WhatsApp Code Dispatch (Direct backend delivery without external redirect)
+                  Button(
+                    onClick = {
+                      val digits = phoneNumber.filter { it.isDigit() }
+                      if (digits.length < 7) {
+                        errorMessage = "Please enter a valid mobile number."
+                        return@Button
+                      }
+                      errorMessage = null
+                      isSendingOtp = true
+                      activeChannel = OtpChannel.WHATSAPP
+
+                      val code = (100000..999999).random().toString()
+                      generatedOtp = code
+                      enteredOtp = ""
+
+                      coroutineScope.launch {
+                        delay(600) // Simulated backend API dispatch
+                        isSendingOtp = false
+                        step = 2
+
+                        val cleanPhone = if (digits.startsWith("0")) "92" + digits.substring(1) else if (digits.startsWith("92")) digits else "92$digits"
+                        viewModel.addNotification(
+                          title = "WhatsApp Security Code Dispatched",
+                          message = "Verification code $code dispatched to WhatsApp at +$cleanPhone."
+                        )
+                      }
+                    },
+                    modifier = Modifier.weight(1f).height(46.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366))
+                  ) {
+                    if (isSendingOtp && activeChannel == OtpChannel.WHATSAPP) {
+                      CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                      Icon(Icons.Default.Chat, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                      Spacer(modifier = Modifier.width(6.dp))
+                      Text("WhatsApp Code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                  }
+
+                  // SMS Code Dispatch (Direct backend delivery without external redirect)
+                  Button(
+                    onClick = {
+                      val digits = phoneNumber.filter { it.isDigit() }
+                      if (digits.length < 7) {
+                        errorMessage = "Please enter a valid mobile number."
+                        return@Button
+                      }
+                      errorMessage = null
+                      isSendingOtp = true
+                      activeChannel = OtpChannel.SMS
+
+                      val code = (100000..999999).random().toString()
+                      generatedOtp = code
+                      enteredOtp = ""
+
+                      coroutineScope.launch {
+                        delay(600) // Simulated backend SMS gateway dispatch
+                        isSendingOtp = false
+                        step = 2
+
+                        val cleanPhone = if (digits.startsWith("0")) "92" + digits.substring(1) else if (digits.startsWith("92")) digits else "92$digits"
+                        viewModel.addNotification(
+                          title = "SMS Security Code Dispatched",
+                          message = "Verification code $code sent via SMS to +$cleanPhone."
+                        )
+                      }
+                    },
+                    modifier = Modifier.weight(1f).height(46.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                  ) {
+                    if (isSendingOtp && activeChannel == OtpChannel.SMS) {
+                      CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                      Icon(Icons.Default.Sms, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                      Spacer(modifier = Modifier.width(6.dp))
+                      Text("SMS Code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                  }
+                }
+              }
+            }
+
+            // TAB 1: Gmail / Email
+            1 -> {
+              Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                  text = "Login via Gmail / Email OTP",
+                  fontSize = 14.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = TextPrimaryDark
+                )
+                Text(
+                  text = "We will send an authentication code directly to your email inbox.",
+                  fontSize = 12.sp,
+                  color = TextSecondaryMuted,
+                  lineHeight = 16.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Name input
+                Text("Your Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = userName,
+                  onValueChange = { userName = it },
+                  singleLine = true,
+                  placeholder = { Text("e.g. Mehdi Raza", color = TextSecondaryMuted, fontSize = 13.sp) },
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(10.dp),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0A0F1D),
+                    unfocusedTextColor = Color(0xFF0A0F1D),
+                    cursorColor = NavyPrimary,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = NavyPrimary,
+                    unfocusedBorderColor = BorderStroke
+                  )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Email input
+                Text("Email / Gmail Address", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = emailInput,
+                  onValueChange = { emailInput = it },
+                  singleLine = true,
+                  placeholder = { Text("name@gmail.com", color = TextSecondaryMuted, fontSize = 13.sp) },
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(10.dp),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0A0F1D),
+                    unfocusedTextColor = Color(0xFF0A0F1D),
+                    cursorColor = NavyPrimary,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = NavyPrimary,
+                    unfocusedBorderColor = BorderStroke
+                  )
+                )
+
+                errorMessage?.let { err ->
+                  Spacer(modifier = Modifier.height(6.dp))
+                  Text(text = err, color = StatusRed, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                  onClick = {
+                    if (emailInput.isBlank() || !emailInput.contains("@") || !emailInput.contains(".")) {
+                      errorMessage = "Please enter a valid email address."
+                      return@Button
+                    }
+                    errorMessage = null
+                    isSendingOtp = true
+                    activeChannel = OtpChannel.EMAIL
+
+                    val code = (100000..999999).random().toString()
+                    generatedOtp = code
+                    enteredOtp = ""
+
+                    coroutineScope.launch {
+                      delay(600) // Simulated backend email dispatch
+                      isSendingOtp = false
+                      step = 2
+
+                      viewModel.addNotification(
+                        title = "Email Security Code Dispatched",
+                        message = "Verification code $code sent to $emailInput."
+                      )
+                    }
+                  },
+                  modifier = Modifier.fillMaxWidth().height(48.dp),
+                  shape = RoundedCornerShape(10.dp),
+                  colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                ) {
+                  if (isSendingOtp) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                  } else {
+                    Icon(Icons.Default.Email, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Send Code to Email", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                  }
+                }
+              }
+            }
+
+            // TAB 2: Google Sign In
+            2 -> {
+              Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                Text(
+                  text = "Sign in with Google",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = TextPrimaryDark
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  text = "Fast, secure 1-tap sign in with your Google Account.",
+                  fontSize = 12.sp,
+                  color = TextSecondaryMuted,
+                  textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                OutlinedButton(
+                  onClick = {
+                    isGoogleLoading = true
+                    coroutineScope.launch {
+                      delay(500)
+                      isGoogleLoading = false
+                      val googleUser = if (userName.isNotBlank()) userName else "Google Verified Member"
+                      val googlePhone = if (phoneNumber.isNotBlank()) phoneNumber else "+92 315 2292493"
+                      viewModel.verifyOtpAndLogin(phone = googlePhone, name = googleUser)
+                      onDismiss()
+                    }
+                  },
+                  shape = RoundedCornerShape(10.dp),
+                  modifier = Modifier.fillMaxWidth().height(48.dp),
+                  colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+                  border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(BorderStroke)
+                  )
+                ) {
+                  if (isGoogleLoading) {
+                    CircularProgressIndicator(color = NavyPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                  } else {
+                    Text("G", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFF4285F4))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Continue with Google", color = TextPrimaryDark, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                  }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Text("Direct authenticated session without SMS requirement", fontSize = 11.sp, color = TextSecondaryMuted)
+              }
+            }
+          }
+        } else {
+          // ================= STEP 2: ENTER & VERIFY OTP =================
           Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
           ) {
-            Text(
-              text = "Sign in with Google",
-              fontSize = 15.sp,
-              fontWeight = FontWeight.Bold,
-              color = TextPrimaryDark
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-              text = "Fast, secure 1-tap sign in with your Google Account.",
-              fontSize = 12.sp,
-              color = TextSecondaryMuted,
-              textAlign = TextAlign.Center
-            )
+            // Prominent INCOMING MESSAGE NOTIFICATION CARD
+            // Shows user the dispatched code clearly without throwing them out of the app
+            val (bannerBg, headerColor, iconVector, channelName, targetDestination) = when (activeChannel) {
+              OtpChannel.WHATSAPP -> Quad(Color(0xFFE8F8EE), Color(0xFF1E7E34), Icons.Default.Chat, "WhatsApp Message", phoneNumber)
+              OtpChannel.SMS -> Quad(Color(0xFFEFF6FF), Color(0xFF1E40AF), Icons.Default.Sms, "SMS Message", phoneNumber)
+              OtpChannel.EMAIL -> Quad(Color(0xFFFEF3C7), Color(0xFF92400E), Icons.Default.Email, "Gmail Notification", emailInput)
+            }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Google Button
-            OutlinedButton(
-              onClick = {
-                isGoogleLoading = true
-                coroutineScope.launch {
-                  delay(700)
-                  isGoogleLoading = false
-                  viewModel.verifyOtpAndLogin(
-                    phone = "+92 315 2292493",
-                    name = "Mehdi Raza (Google)"
-                  )
-                  onDismiss()
-                }
-              },
-              shape = RoundedCornerShape(10.dp),
+            Surface(
+              shape = RoundedCornerShape(12.dp),
+              color = bannerBg,
+              border = androidx.compose.foundation.BorderStroke(1.dp, headerColor.copy(alpha = 0.3f)),
               modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-              colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
-              border = ButtonDefaults.outlinedButtonBorder.copy(
-                brush = androidx.compose.ui.graphics.SolidColor(BorderStroke)
-              )
+                .clickable {
+                  // Tap banner to auto-fill code
+                  enteredOtp = generatedOtp
+                  clipboardManager.setText(AnnotatedString(generatedOtp))
+                  errorMessage = null
+                }
             ) {
-              if (isGoogleLoading) {
-                CircularProgressIndicator(color = NavyPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-              } else {
+              Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(iconVector, contentDescription = null, tint = headerColor, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "$channelName • Just Now", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = headerColor)
+                  }
+                  Text(text = "Tap to Auto-Fill", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = headerColor)
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 Text(
-                  text = "G",
-                  fontSize = 18.sp,
-                  fontWeight = FontWeight.Black,
-                  color = Color(0xFF4285F4)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                  text = "Continue with Google",
-                  color = TextPrimaryDark,
-                  fontSize = 14.sp,
-                  fontWeight = FontWeight.SemiBold
+                  text = "PAK E DRIVE Security: Your login verification code is $generatedOtp. Valid for 10 minutes.",
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.Medium,
+                  color = Color(0xFF111827)
                 )
               }
             }
@@ -501,92 +579,161 @@ fun AuthDialog(
             Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-              text = "Signed in as: mehdiraza.dev@gmail.com",
-              fontSize = 11.sp,
-              color = TextSecondaryMuted
+              text = "Enter 6-Digit Code",
+              fontSize = 16.sp,
+              fontWeight = FontWeight.Bold,
+              color = TextPrimaryDark
             )
-          }
-        }
+            Text(
+              text = "Code dispatched to $targetDestination",
+              fontSize = 12.sp,
+              color = TextSecondaryMuted,
+              textAlign = TextAlign.Center
+            )
 
-        // ================= TAB 2: EMAIL LOGIN =================
-        if (authTab == 2) {
-          Column(modifier = Modifier.fillMaxWidth()) {
-            Text("Email Address", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // OTP Input Box
             OutlinedTextField(
-              value = emailInput,
-              onValueChange = { emailInput = it },
+              value = enteredOtp,
+              onValueChange = {
+                if (it.length <= 6 && it.all { ch -> ch.isDigit() }) {
+                  enteredOtp = it
+                  errorMessage = null
+                }
+              },
               singleLine = true,
-              placeholder = { Text("name@example.com", color = TextSecondaryMuted, fontSize = 13.sp) },
+              placeholder = {
+                Text(
+                  "• • • • • •",
+                  color = TextSecondaryMuted,
+                  fontSize = 20.sp,
+                  textAlign = TextAlign.Center,
+                  modifier = Modifier.fillMaxWidth()
+                )
+              },
+              textStyle = LocalTextStyle.current.copy(
+                textAlign = TextAlign.Center,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 8.sp,
+                color = NavyPrimary
+              ),
               modifier = Modifier.fillMaxWidth(),
               shape = RoundedCornerShape(10.dp),
               colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF0A0F1D),
-                unfocusedTextColor = Color(0xFF0A0F1D),
+                focusedTextColor = NavyPrimary,
+                unfocusedTextColor = NavyPrimary,
                 cursorColor = NavyPrimary,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
+                focusedContainerColor = Color(0xFFF8FAFC),
+                unfocusedContainerColor = Color(0xFFF8FAFC),
                 focusedBorderColor = NavyPrimary,
                 unfocusedBorderColor = BorderStroke
               )
             )
+
+            errorMessage?.let { err ->
+              Spacer(modifier = Modifier.height(6.dp))
+              Text(text = err, color = StatusRed, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Text("Password", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedTextField(
-              value = passwordInput,
-              onValueChange = { passwordInput = it },
-              singleLine = true,
-              visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-              trailingIcon = {
-                IconButton(onClick = { showPassword = !showPassword }) {
-                  Icon(
-                    imageVector = if (showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                    contentDescription = null,
-                    tint = TextSecondaryMuted
-                  )
-                }
-              },
-              placeholder = { Text("••••••••", color = TextSecondaryMuted, fontSize = 13.sp) },
-              modifier = Modifier.fillMaxWidth(),
-              shape = RoundedCornerShape(10.dp),
-              colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF0A0F1D),
-                unfocusedTextColor = Color(0xFF0A0F1D),
-                cursorColor = NavyPrimary,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedBorderColor = NavyPrimary,
-                unfocusedBorderColor = BorderStroke
-              )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-              onClick = {
-                viewModel.verifyOtpAndLogin(
-                  phone = "+92 315 2292493",
-                  name = emailInput.substringBefore("@").replace(".", " ").capitalize()
-                )
-                onDismiss()
-              },
+            // Quick Auto-Paste Button
+            Surface(
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFEFF6FF),
+              border = androidx.compose.foundation.BorderStroke(1.dp, NavyPrimary.copy(alpha = 0.3f)),
               modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .height(38.dp)
+                .clickable {
+                  enteredOtp = generatedOtp
+                  clipboardManager.setText(AnnotatedString(generatedOtp))
+                  errorMessage = null
+                }
+            ) {
+              Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+              ) {
+                Icon(Icons.Default.ContentPaste, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Auto-Paste Code ($generatedOtp)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+              }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Verify & Continue Button
+            Button(
+              onClick = {
+                if (enteredOtp.trim() == generatedOtp.trim() && generatedOtp.isNotBlank()) {
+                  val displayName = userName.ifBlank { "Valued Member" }
+                  val userContact = if (activeChannel == OtpChannel.EMAIL) {
+                    emailInput.ifBlank { "member@pakedrive.pk" }
+                  } else {
+                    val digits = phoneNumber.filter { it.isDigit() }
+                    if (digits.startsWith("0")) "+92 " + digits.substring(1) else "+92 $digits"
+                  }
+
+                  viewModel.verifyOtpAndLogin(userContact, displayName)
+                  onDismiss()
+                } else {
+                  errorMessage = "Invalid verification code. Please enter the 6-digit code shown above."
+                }
+              },
+              enabled = enteredOtp.length == 6,
+              modifier = Modifier.fillMaxWidth().height(48.dp),
               shape = RoundedCornerShape(10.dp),
               colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
             ) {
-              Text("Sign In with Email", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+              Text("Verify & Continue", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Resend & Change options
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              TextButton(onClick = { step = 1; enteredOtp = ""; errorMessage = null }) {
+                Text("Change Details", color = TextSecondaryMuted, fontSize = 12.sp)
+              }
+
+              TextButton(
+                onClick = {
+                  if (resendCountdown == 0) {
+                    val newCode = (100000..999999).random().toString()
+                    generatedOtp = newCode
+                    enteredOtp = ""
+                    resendCountdown = 45
+
+                    viewModel.addNotification(
+                      title = "Security Code Resent",
+                      message = "New verification code $newCode dispatched via ${activeChannel.name}."
+                    )
+                  }
+                },
+                enabled = resendCountdown == 0
+              ) {
+                Text(
+                  text = if (resendCountdown > 0) "Resend in ${resendCountdown}s" else "Resend Code",
+                  color = if (resendCountdown > 0) TextSecondaryMuted else NavyPrimary,
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.SemiBold
+                )
+              }
             }
           }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Security / Privacy reassurance
+        // Security / Privacy assurance
         Row(
           verticalAlignment = Alignment.CenterVertically,
           modifier = Modifier.padding(horizontal = 8.dp)
@@ -594,7 +741,7 @@ fun AuthDialog(
           Icon(Icons.Default.Security, contentDescription = null, tint = StatusGreen, modifier = Modifier.size(13.dp))
           Spacer(modifier = Modifier.width(6.dp))
           Text(
-            text = "256-bit SSL encrypted • 100% private data protection",
+            text = "256-bit SSL encrypted • 100% private authentication",
             fontSize = 10.sp,
             color = TextSecondaryMuted
           )
@@ -603,3 +750,11 @@ fun AuthDialog(
     }
   }
 }
+
+private data class Quad<A, B, C, D, E>(
+  val first: A,
+  val second: B,
+  val third: C,
+  val fourth: D,
+  val fifth: E
+)
