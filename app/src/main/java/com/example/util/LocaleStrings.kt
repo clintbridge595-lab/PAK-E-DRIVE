@@ -2,14 +2,13 @@ package com.example.util
 
 enum class AppLanguage(val code: String, val label: String, val nativeLabel: String) {
   ENGLISH("en", "English", "English"),
-  URDU("ur", "Urdu", "اردو")
+  URDU("ur", "English", "English")
 }
 
 object LocaleStrings {
 
   fun get(key: String, lang: AppLanguage): String {
-    val map = if (lang == AppLanguage.URDU) urduMap else englishMap
-    return map[key] ?: englishMap[key] ?: key
+    return englishMap[key] ?: key
   }
 
   private val englishMap = mapOf(
@@ -30,7 +29,7 @@ object LocaleStrings {
     "faq_support" to "FAQs & Support",
     "faq_subtitle" to "Quick customer care and common rental queries",
     "rate_review" to "Rate & Review",
-    "rate_ride" to "⭐ Rate Ride",
+    "rate_ride" to "Rate Ride",
     "customer_reviews" to "Customer Reviews",
     "submit_review" to "Submit Review",
     "car_rating_label" to "Vehicle & AC Condition",
@@ -57,7 +56,7 @@ object LocaleStrings {
     "uan_1" to "UAN Helpline 1",
     "uan_2" to "UAN Helpline 2",
     "whatsapp_manager" to "WhatsApp Fleet Manager",
-    "lang_toggle" to "EN | اردو",
+    "lang_toggle" to "EN",
     "active" to "Active",
     "completed" to "Completed",
     "cancelled" to "Cancelled",
@@ -67,60 +66,5 @@ object LocaleStrings {
     "total_rent" to "Total Rent",
     "discount_applied" to "Discount Applied"
   )
-
-  private val urduMap = mapOf(
-    "app_name" to "پاک ای ڈرائیو",
-    "app_tagline" to "پاکستان کا پریمیم کار رینٹل نیٹ ورک",
-    "tab_home" to "ہوم",
-    "tab_fleet" to "گاڑیاں",
-    "tab_bookings" to "بکنگز",
-    "tab_support" to "رابطہ",
-    "tab_profile" to "پروفائل",
-    "book_now" to "ابھی بک کریں",
-    "view_details" to "تفصیلات",
-    "featured" to "نمایاں",
-    "with_driver" to "ڈرائیور کے ساتھ",
-    "select_city" to "شہر منتخب کریں",
-    "all_cities" to "تمام پاکستانی شہر",
-    "search_cars" to "گاڑی تلاش کریں...",
-    "faq_support" to "سوال و جواب اور کسٹمر کیئر",
-    "faq_subtitle" to "اکثر پوچھے جانے والے سوالات اور فوری رابطہ",
-    "rate_review" to "ریٹنگ اور ریویو",
-    "rate_ride" to "⭐ ریٹنگ دیں",
-    "customer_reviews" to "صارفین کے ریویوز اور تاثرات",
-    "submit_review" to "ریویو جمع کروائیں",
-    "car_rating_label" to "گاڑی اور اے سی کی حالت",
-    "driver_rating_label" to "ڈرائیور کا اخلاق اور وقت کی پابندی",
-    "review_placeholder" to "اپنے سفر کا تجربہ یہاں لکھیں...",
-    "verified_customer" to "تصدیق شدہ کسٹمر",
-    "login_whatsapp" to "واٹس ایپ / ایس ایم ایس لاگ ان",
-    "send_whatsapp_code" to "واٹس ایپ پر کوڈ بھیجیں",
-    "send_sms_code" to "ایس ایم ایس پر کوڈ بھیجیں",
-    "enter_otp" to "6 ہندسوں کا تصدیقی کوڈ درج کریں",
-    "verify_continue" to "تصدیق کریں اور آگے بڑھیں",
-    "resend_code" to "کوڈ دوبارہ بھیجیں",
-    "code_sent_notice" to "تصدیقی کوڈ آپ کے فون پر روانہ کر دیا گیا ہے",
-    "alerts_notifications" to "نوٹیفیکیشنز اور الرٹس",
-    "mark_all_read" to "سب پڑھ لیے",
-    "clear_all" to "سب صاف کریں",
-    "no_alerts" to "اس وقت کوئی نیا نوٹیفیکیشن نہیں ہے",
-    "offline_notice" to "انٹرنیٹ کنکشن موجود نہیں ہے • آف لائن موڈ",
-    "online_notice" to "انٹرنیٹ بحال ہو گیا ہے",
-    "my_bookings" to "میری بکنگز",
-    "no_bookings" to "فی الحال کوئی بکنگ نہیں ہے",
-    "no_bookings_sub" to "شہر کے اندر یا انٹرسٹی سفر کے لیے گاڑی بک کریں۔",
-    "helpline_title" to "24 گھنٹے کسٹمر سپورٹ",
-    "uan_1" to "ہیلپ لائن نمبر 1",
-    "uan_2" to "ہیلپ لائن نمبر 2",
-    "whatsapp_manager" to "واٹس ایپ فلیٹ مینیجر",
-    "lang_toggle" to "اردو | EN",
-    "active" to "فعال",
-    "completed" to "مکمل شدہ",
-    "cancelled" to "منسوخ شدہ",
-    "driver_details" to "ڈرائیور کی معلومات",
-    "call_driver" to "ڈرائیور کو کال کریں",
-    "whatsapp_driver" to "واٹس ایپ رابطہ",
-    "total_rent" to "کل کرایہ",
-    "discount_applied" to "رعایت لاگو ہے"
-  )
 }
+

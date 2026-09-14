@@ -36,9 +36,9 @@ import com.example.util.LocaleStrings
 data class FaqItem(
   val id: Int,
   val questionEn: String,
-  val questionUr: String,
+  val questionUr: String = "",
   val answerEn: String,
-  val answerUr: String,
+  val answerUr: String = "",
   val category: String = "General"
 )
 
@@ -55,51 +55,37 @@ fun FaqSupportDialog(
       FaqItem(
         id = 1,
         questionEn = "What is a 'Wapsi Car' and why are the rates so low?",
-        questionUr = "واپسی کار کیا ہے اور اس کے ریٹس کم کیوں ہیں؟",
-        answerEn = "Wapsi cars are premium vehicles returning back to their base city (e.g., Karachi to Hyderabad, Lahore to Faisalabad). Since the car is returning empty anyway, PAK E DRIVE offers up to 40% lump sum discounts on that route.",
-        answerUr = "واپسی کار سے مراد وہ گاڑیاں ہیں جو اپنے اصل شہر واپس جا رہی ہوتی ہیں (مثلاً کراچی سے حیدرآباد یا لاہور سے فیصل آباد)۔ چونکہ گاڑی نے واپس جانا ہوتا ہے، اس لیے ہم اس روٹ پر 40 فیصد تک رعایت دیتے ہیں۔"
+        answerEn = "Wapsi cars are premium vehicles returning back to their base city (e.g., Karachi to Hyderabad, Lahore to Faisalabad). Since the car is returning empty anyway, PAK E DRIVE offers up to 40% lump sum discounts on that route."
       ),
       FaqItem(
         id = 2,
         questionEn = "Is a professional chauffeur included with all cars?",
-        questionUr = "کیا تمام گاڑیوں کے ساتھ ڈرائیور فراہم کیا جاتا ہے؟",
-        answerEn = "Yes! All PAK E DRIVE rentals are 100% chauffeur-driven by licensed, verified, polite drivers who have extensive knowledge of Pakistani motorways and city routes.",
-        answerUr = "جی ہاں! پاک ای ڈرائیو کی تمام گاڑیاں تجربہ کار اور تصدیق شدہ ڈرائیور کے ساتھ فراہم کی جاتی ہیں جنہیں تمام موٹرویز اور شہروں کے راستوں کا مکمل تجربہ ہوتا ہے۔"
+        answerEn = "Yes! All PAK E DRIVE rentals are 100% chauffeur-driven by licensed, verified, polite drivers who have extensive knowledge of Pakistani motorways and city routes."
       ),
       FaqItem(
         id = 3,
         questionEn = "What are the fuel and motorway toll tax rules?",
-        questionUr = "پیٹرول اور موٹروے ٹول ٹیکس کا کیا طریقہ کار ہے؟",
-        answerEn = "For daily rentals, fuel and M-Tag motorway toll taxes are paid by the customer based on actual usage. For 'Lump Sum Wapsi Deals', tolls can be pre-included as indicated in the booking summary.",
-        answerUr = "روزانہ کے کرائے میں پیٹرول اور ایم ٹیگ ٹول ٹیکس کسٹمر خود ادا کرتے ہیں۔ جبکہ یکمشت واپسی ڈیلز میں ٹول ٹیکس کرائے میں شامل ہوتا ہے۔"
+        answerEn = "For daily rentals, fuel and M-Tag motorway toll taxes are paid by the customer based on actual usage. For 'Lump Sum Wapsi Deals', tolls can be pre-included as indicated in the booking summary."
       ),
       FaqItem(
         id = 4,
         questionEn = "What documents are required for booking?",
-        questionUr = "گاڑی بک کرنے کے لیے کن دستاویزات کی ضرورت ہوتی ہے؟",
-        answerEn = "A valid Pakistani CNIC (or Passport for overseas Pakistanis) and an active mobile number for live driver coordinates and booking confirmation.",
-        answerUr = "صرف ایک اصلی شناختی کارڈ (یا اوورسیز پاکستانیوں کے لیے پاسپورٹ) اور ایک موبائل نمبر ڈرائیور کی رابطہ کاری کے لیے درکار ہے۔"
+        answerEn = "A valid Pakistani CNIC (or Passport for overseas Pakistanis) and an active mobile number for live driver coordinates and booking confirmation."
       ),
       FaqItem(
         id = 5,
         questionEn = "Can I cancel or reschedule my booking?",
-        questionUr = "کیا میں اپنی بکنگ منسوخ یا تبدیل کر سکتا ہوں؟",
-        answerEn = "Yes! Bookings can be cancelled or rescheduled free of charge up to 4 hours before the scheduled departure time directly inside the Bookings tab or via WhatsApp.",
-        answerUr = "جی ہاں! بکنگ روانگی کے وقت سے 4 گھنٹے پہلے تک بکنگز اسکرین یا واٹس ایپ کے ذریعے بغیر کسی فیس کے منسوخ یا ری شیڈول کی جا سکتی ہے۔"
+        answerEn = "Yes! Bookings can be cancelled or rescheduled free of charge up to 4 hours before the scheduled departure time directly inside the Bookings tab or via WhatsApp."
       ),
       FaqItem(
         id = 6,
         questionEn = "Do you provide luxury cars for weddings and VIP protocol?",
-        questionUr = "کیا شادی بیاہ اور وی آئی پی پروٹوکول کے لیے لگژری گاڑیاں دستیاب ہیں؟",
-        answerEn = "Yes, we provide decorated Audi A6, Toyota Prado, and Land Cruiser V8 with suited chauffeurs for weddings, corporate executives, and delegations.",
-        answerUr = "جی بالکل، شادی بیاہ اور وی آئی پی پروٹوکول کے لیے آڈی اے 6، ٹویوٹا پراڈو اور وی 8 لینڈ کروزر مع سجے ہوئے پھول اور ڈرائیور دستیاب ہیں۔"
+        answerEn = "Yes, we provide decorated Audi A6, Toyota Prado, and Land Cruiser V8 with suited chauffeurs for weddings, corporate executives, and delegations."
       ),
       FaqItem(
         id = 7,
         questionEn = "Are tours to Northern Areas (Swat, Hunza, Skardu) supported?",
-        questionUr = "کیا شمالی علاقہ جات (سوات، ہنزہ، سکردو) کے ٹورز دستیاب ہیں؟",
-        answerEn = "Yes! Our Toyota Fortuner 4x4, Prado, and HiAce Grand Cabin are fully equipped for high-altitude mountain journeys with specialized hill drivers.",
-        answerUr = "جی ہاں! ہماری ٹویوٹا فارچونر 4x4، پراڈو اور ہائی ایس گرینڈ کیبن شمالی علاقہ جات کے لیے خصوصی پہاڑی ڈرائیورز کے ساتھ مکمل تیار ہیں۔"
+        answerEn = "Yes! Our Toyota Fortuner 4x4, Prado, and HiAce Grand Cabin are fully equipped for high-altitude mountain journeys with specialized hill drivers."
       )
     )
   }
@@ -113,46 +99,69 @@ fun FaqSupportDialog(
       colors = CardDefaults.cardColors(containerColor = Color.White),
       modifier = Modifier
         .fillMaxWidth(0.95f)
-        .fillMaxHeight(0.9f)
+        .fillMaxHeight(0.90f)
     ) {
-      Column(modifier = Modifier.fillMaxSize()) {
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .background(Color.White)
+      ) {
         // Header
-        Row(
+        Box(
           modifier = Modifier
             .fillMaxWidth()
             .background(NavyPrimary)
-            .padding(18.dp),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-              modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.2f)),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(Icons.Default.SupportAgent, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Box(
+                modifier = Modifier
+                  .size(36.dp)
+                  .clip(CircleShape)
+                  .background(OrangeAccent),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(
+                  Icons.Default.SupportAgent,
+                  contentDescription = null,
+                  tint = Color.White,
+                  modifier = Modifier.size(20.dp)
+                )
+              }
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "24/7 Helpline & FAQs",
+                  color = Color.White,
+                  fontSize = 16.sp,
+                  fontWeight = FontWeight.Bold
+                )
+                Text(
+                  text = "Instant support & rental guidelines",
+                  color = Color.White.copy(alpha = 0.8f),
+                  fontSize = 11.5.sp
+                )
+              }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-              Text(
-                text = LocaleStrings.get("faq_support", currentLanguage),
-                color = Color.White,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
-              )
-              Text(
-                text = "PAK E DRIVE 24/7 Help Desk",
-                color = Color(0xFFCBD5E1),
-                fontSize = 11.sp
-              )
-            }
-          }
 
-          IconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+            IconButton(
+              onClick = onDismiss,
+              modifier = Modifier
+                .size(32.dp)
+                .background(Color.White.copy(alpha = 0.15f), CircleShape)
+            ) {
+              Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close",
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+              )
+            }
           }
         }
 
@@ -166,7 +175,7 @@ fun FaqSupportDialog(
           // Quick Direct Contact Buttons
           item {
             Text(
-              text = if (currentLanguage == AppLanguage.URDU) "فوری کسٹمر سپورٹ چینلز" else "Quick Customer Care Channels",
+              text = "Quick Customer Care Channels",
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold,
               color = NavyPrimary
@@ -273,7 +282,7 @@ fun FaqSupportDialog(
           item {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-              text = if (currentLanguage == AppLanguage.URDU) "اکثر پوچھے جانے والے سوالات (FAQ)" else "Frequently Asked Questions",
+              text = "Frequently Asked Questions",
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold,
               color = NavyPrimary
@@ -283,8 +292,8 @@ fun FaqSupportDialog(
           // FAQ Items
           items(faqs, key = { it.id }) { faq ->
             val isExpanded = expandedFaqId == faq.id
-            val question = if (currentLanguage == AppLanguage.URDU) faq.questionUr else faq.questionEn
-            val answer = if (currentLanguage == AppLanguage.URDU) faq.answerUr else faq.answerEn
+            val question = faq.questionEn
+            val answer = faq.answerEn
 
             Card(
               shape = RoundedCornerShape(12.dp),
@@ -353,7 +362,7 @@ fun FaqSupportDialog(
                   Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(20.dp))
                   Spacer(modifier = Modifier.width(6.dp))
                   Text(
-                    text = if (currentLanguage == AppLanguage.URDU) "مرکزی دفاتر کے پتے" else "Regional Head Offices",
+                    text = "Regional Head Offices",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = Color(0xFF15803D)

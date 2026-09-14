@@ -26,7 +26,7 @@ class CarRentalRepository(context: Context) {
 
   // Real Authentic Pakistani Rental Fleet - Each vehicle has its own distinct photo
   // Real Authentic Pakistani Rental Fleet - Client Verified Pricing & Lineup
-  val fleet: List<Car> = listOf(
+  private val initialFleet: List<Car> = listOf(
     // 1. CLIENT'S SPECIAL HIGHLIGHT FLAGSHIP: Glossy Black Changan Oshan X7 300T FutureSense
     Car(
       id = "car_oshan_x7_black",
@@ -500,34 +500,155 @@ class CarRentalRepository(context: Context) {
     bookingDao.deleteBooking(id)
   }
 
-  fun updateProfile(name: String, phone: String, email: String, city: String, address: String) {
-    val updated = _userProfile.value.copy(
+  private val _fleet = MutableStateFlow<List<Car>>(loadCustomCars() + initialFleet)
+  val fleetCars: StateFlow<List<Car>> = _fleet.asStateFlow()
+  val fleet: List<Car> get() = _fleet.value
+
+  private fun loadCustomCars(): List<Car> {
+    val rawSet = prefs.getStringSet("partner_cars_set", emptySet()) ?: emptySet()
+    val list = mutableListOf<Car>()
+    for (item in rawSet) {
+      try {
+        val p = item.split(":::")
+        if (p.size >= 12) {
+          list.add(
+            Car(
+              id = p[0],
+              name = p[1],
+              variant = p[2],
+              make = p[3],
+              category = p[4],
+              dailyRate = p[5].toIntOrNull() ?: 8000,
+              tenHourRate = p[6].toIntOrNull() ?: 6500,
+              priceDisplay = "Rs. ${String.format("%,d", p[6].toIntOrNull() ?: 6500)} / 10h",
+              rateType = "/ 10h",
+              routeSnippet = "${p[7]} • Partner Fleet",
+              fromCity = p[7],
+              toCity = "Intercity / Local",
+              imageRes = p[8].toIntOrNull() ?: R.drawable.car_corolla_altis,
+              engineSpec = p[9],
+              seats = p[10].toIntOrNull() ?: 5,
+              transmission = p[11],
+              fuelType = if (p.size > 12) p[12] else "Petrol",
+              rating = 5.0,
+              reviewCount = 1,
+              isFeatured = true,
+              description = if (p.size > 13) p[13] else "Verified Partner Vehicle with Chauffeur",
+              isPartnerCar = true,
+              partnerDriverName = if (p.size > 14) p[14] else "",
+              partnerPhone = if (p.size > 15) p[15] else "",
+              partnerCnic = if (p.size > 16) p[16] else ""
+            )
+          )
+        }
+      } catch (_: Exception) {}
+    }
+    return list
+  }
+
+  fun addPartnerCar(car: Car) {
+    val rawSet = (prefs.getStringSet("partner_cars_set", emptySet()) ?: emptySet()).toMutableSet()
+    val serialized = listOf(
+      car.id,
+      car.name,
+      car.variant,
+      car.make,
+      car.category,
+      car.dailyRate.toString(),
+      car.tenHourRate.toString(),
+      car.fromCity,
+      car.imageRes.toString(),
+      car.engineSpec,
+      car.seats.toString(),
+      car.transmission,
+      car.fuelType,
+      car.description,
+      car.partnerDriverName,
+      car.partnerPhone,
+      car.partnerCnic
+    ).joinToString(":::")
+    rawSet.add(serialized)
+    prefs.edit().putStringSet("partner_cars_set", rawSet).apply()
+    _fleet.value = listOf(car) + _fleet.value
+  }
+
+  fun updateProfile(name: String, phone: String, email: String, city: String, address: String, cnic: String = "") {
+    val current = _userProfile.value
+    val updated = current.copy(
       name = name,
       phone = phone,
       email = email,
       city = city,
       address = address,
+      cnic = if (cnic.isNotBlank()) cnic else current.cnic,
       isLoggedIn = true
     )
     saveProfile(updated)
   }
 
-  fun loginUser(phone: String, name: String) {
+  fun loginUser(phone: String, name: String, cnic: String = "") {
     val updated = _userProfile.value.copy(
       isLoggedIn = true,
       phone = phone,
-      name = name.ifBlank { "Valued Member" }
+      name = name.ifBlank { "Valued Member" },
+      cnic = if (cnic.isNotBlank()) cnic else _userProfile.value.cnic
     )
     saveProfile(updated)
   }
 
-  fun loginWithPassword(identifier: String, name: String, isEmail: Boolean) {
+  fun loginWithPassword(identifier: String, name: String, isEmail: Boolean, cnic: String = "") {
     val current = _userProfile.value
     val updated = current.copy(
       isLoggedIn = true,
+      accountType = if (current.isDriverPartner) "DRIVER" else "CLIENT",
       name = name.ifBlank { if (isEmail) identifier.substringBefore("@").replaceFirstChar { it.uppercase() } else "Member" },
       phone = if (!isEmail) identifier else current.phone.ifBlank { "" },
-      email = if (isEmail) identifier else current.email.ifBlank { "" }
+      email = if (isEmail) identifier else current.email.ifBlank { "" },
+      cnic = if (cnic.isNotBlank()) cnic else current.cnic
+    )
+    saveProfile(updated)
+  }
+
+  fun registerClient(name: String, phone: String, email: String, cnic: String) {
+    val current = _userProfile.value
+    val updated = current.copy(
+      isLoggedIn = true,
+      accountType = "CLIENT",
+      name = name.trim(),
+      phone = phone.trim(),
+      email = email.trim(),
+      cnic = cnic.trim(),
+      isDriverPartner = false,
+      driverLicenseNumber = "",
+      isLicenseVerified = false
+    )
+    saveProfile(updated)
+  }
+
+  fun registerDriverPartner(
+    name: String,
+    phone: String,
+    email: String,
+    cnic: String,
+    licenseNumber: String,
+    isNadraVerified: Boolean = true,
+    isLicenseVerified: Boolean = true,
+    licenseIssuingAuthority: String = "DLIMS Traffic Police"
+  ) {
+    val current = _userProfile.value
+    val updated = current.copy(
+      isLoggedIn = true,
+      accountType = "DRIVER",
+      name = name.ifBlank { current.name },
+      phone = phone.ifBlank { current.phone },
+      email = email.ifBlank { current.email },
+      cnic = cnic.ifBlank { current.cnic },
+      isNadraVerified = isNadraVerified,
+      nadraVerificationStatus = if (isNadraVerified) "NADRA_VERIFIED" else "FAILED",
+      isDriverPartner = true,
+      driverLicenseNumber = licenseNumber,
+      isLicenseVerified = isLicenseVerified,
+      licenseIssuingAuthority = licenseIssuingAuthority
     )
     saveProfile(updated)
   }
@@ -563,33 +684,68 @@ class CarRentalRepository(context: Context) {
       name = "Guest User",
       phone = "",
       email = "",
+      cnic = "",
       city = "Karachi",
       address = "",
-      totalTrips = 0
+      totalTrips = 0,
+      isDriverPartner = false,
+      driverLicenseNumber = ""
     )
     saveProfile(guest)
   }
 
   private fun loadProfile(): UserProfile {
     val loggedIn = prefs.getBoolean("is_logged_in", false)
+    val accountType = prefs.getString("account_type", "CLIENT") ?: "CLIENT"
     val name = prefs.getString("name", "") ?: ""
     val phone = prefs.getString("phone", "") ?: ""
     val email = prefs.getString("email", "") ?: ""
+    val cnic = prefs.getString("cnic", "") ?: ""
     val city = prefs.getString("city", "Karachi") ?: "Karachi"
     val address = prefs.getString("address", "") ?: ""
     val trips = prefs.getInt("total_trips", 0)
-    return UserProfile(loggedIn, name, phone, email, city, address, trips)
+    val isDriver = prefs.getBoolean("is_driver_partner", false)
+    val license = prefs.getString("driver_license", "") ?: ""
+    val isNadra = prefs.getBoolean("is_nadra_verified", false)
+    val nadraStatus = prefs.getString("nadra_status", "UNVERIFIED") ?: "UNVERIFIED"
+    val isLicVerified = prefs.getBoolean("is_license_verified", false)
+    val licAuth = prefs.getString("license_auth", "") ?: ""
+    return UserProfile(
+      isLoggedIn = loggedIn,
+      accountType = accountType,
+      name = name,
+      phone = phone,
+      email = email,
+      cnic = cnic,
+      isNadraVerified = isNadra,
+      nadraVerificationStatus = nadraStatus,
+      city = city,
+      address = address,
+      totalTrips = trips,
+      isDriverPartner = isDriver,
+      driverLicenseNumber = license,
+      isLicenseVerified = isLicVerified,
+      licenseIssuingAuthority = licAuth
+    )
   }
 
   private fun saveProfile(profile: UserProfile) {
     prefs.edit()
       .putBoolean("is_logged_in", profile.isLoggedIn)
+      .putString("account_type", profile.accountType)
       .putString("name", profile.name)
       .putString("phone", profile.phone)
       .putString("email", profile.email)
+      .putString("cnic", profile.cnic)
+      .putBoolean("is_nadra_verified", profile.isNadraVerified)
+      .putString("nadra_status", profile.nadraVerificationStatus)
       .putString("city", profile.city)
       .putString("address", profile.address)
       .putInt("total_trips", profile.totalTrips)
+      .putBoolean("is_driver_partner", profile.isDriverPartner)
+      .putString("driver_license", profile.driverLicenseNumber)
+      .putBoolean("is_license_verified", profile.isLicenseVerified)
+      .putString("license_auth", profile.licenseIssuingAuthority)
       .apply()
     _userProfile.value = profile
   }

@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,23 +28,31 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainViewModel
+import com.example.util.CnicValidator
 import com.example.util.PasswordValidator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * Dedicated Client / Passenger Sign-Up & Sign-In Dialog.
+ * Exclusively collects: Full Name, Email, Phone Number, NADRA CNIC, and Password.
+ * Does NOT require driving licenses or vehicle details (reserved for Driver Partners).
+ */
 @Composable
 fun AuthDialog(
   viewModel: MainViewModel,
   onDismiss: () -> Unit
 ) {
   val coroutineScope = rememberCoroutineScope()
+  val scrollState = rememberScrollState()
 
-  // 0: Mobile Number, 1: Email Address
-  var contactMode by remember { mutableStateOf(0) }
+  // Mode: 0 = Sign Up (New Client), 1 = Sign In (Existing Client)
+  var authMode by remember { mutableStateOf(0) }
 
   var userName by remember { mutableStateOf("") }
-  var phoneNumber by remember { mutableStateOf("") }
   var emailInput by remember { mutableStateOf("") }
+  var phoneNumber by remember { mutableStateOf("") }
+  var cnicInput by remember { mutableStateOf("") }
   var password by remember { mutableStateOf("") }
   var passwordVisible by remember { mutableStateOf(false) }
 
@@ -56,11 +66,12 @@ fun AuthDialog(
       elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 4.dp)
+        .padding(horizontal = 4.dp, vertical = 16.dp)
     ) {
       Column(
         modifier = Modifier
           .fillMaxWidth()
+          .verticalScroll(scrollState)
           .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
@@ -73,15 +84,16 @@ fun AuthDialog(
           Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
               modifier = Modifier
-                .size(36.dp)
+                .size(38.dp)
                 .clip(CircleShape)
-                .background(NavyPrimary.copy(alpha = 0.1f)),
+                .background(Color(0xFFF1F5F9))
+                .border(1.dp, Color(0xFFE2E8F0), CircleShape),
               contentAlignment = Alignment.Center
             ) {
               Icon(
-                Icons.Default.DirectionsCar,
+                Icons.Default.Person,
                 contentDescription = null,
-                tint = NavyPrimary,
+                tint = Color(0xFF111827),
                 modifier = Modifier.size(20.dp)
               )
             }
@@ -91,12 +103,13 @@ fun AuthDialog(
                 text = "PAK E DRIVE",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
-                color = NavyPrimary
+                color = Color(0xFF111827)
               )
               Text(
-                text = "Member Sign In / Sign Up",
-                fontSize = 11.sp,
-                color = TextSecondaryMuted
+                text = if (authMode == 0) "Client & Passenger Sign Up" else "Client Sign In",
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF6B7280)
               )
             }
           }
@@ -105,189 +118,232 @@ fun AuthDialog(
             onClick = onDismiss,
             modifier = Modifier.size(32.dp)
           ) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondaryMuted)
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF6B7280))
           }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        Text(
-          text = "Sign in or create your account to book rental cars across Pakistan with full chauffeur service.",
-          fontSize = 12.sp,
-          color = TextSecondaryMuted,
-          textAlign = TextAlign.Start,
-          modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Full Name Field
-        Text(
-          text = "Full Name",
-          fontSize = 12.sp,
-          fontWeight = FontWeight.SemiBold,
-          color = TextPrimaryDark,
-          modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        OutlinedTextField(
-          value = userName,
-          onValueChange = {
-            userName = it
-            errorMessage = null
-          },
-          placeholder = { Text("e.g. Mehdi Raza", fontSize = 12.sp, color = TextSecondaryMuted) },
-          singleLine = true,
-          modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(10.dp),
-          colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color(0xFF0A0F1D),
-            unfocusedTextColor = Color(0xFF0A0F1D),
-            cursorColor = NavyPrimary,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            focusedBorderColor = NavyPrimary,
-            unfocusedBorderColor = BorderStroke
-          )
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Touchable Switcher: Mobile Phone vs Email Address
+        // Mode Switcher: Sign Up vs Sign In
         Row(
           modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFF1F5F9))
+            .background(Color(0xFFF3F4F6))
             .padding(3.dp)
         ) {
           Box(
             modifier = Modifier
               .weight(1f)
               .clip(RoundedCornerShape(8.dp))
-              .background(if (contactMode == 0) Color.White else Color.Transparent)
+              .background(if (authMode == 0) Color.White else Color.Transparent)
               .clickable {
-                contactMode = 0
+                authMode = 0
                 errorMessage = null
               }
               .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center
           ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(
-                Icons.Default.Phone,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = if (contactMode == 0) NavyPrimary else TextSecondaryMuted
-              )
-              Spacer(modifier = Modifier.width(4.dp))
-              Text(
-                text = "Phone (+92)",
-                fontSize = 12.sp,
-                fontWeight = if (contactMode == 0) FontWeight.Bold else FontWeight.Medium,
-                color = if (contactMode == 0) NavyPrimary else TextSecondaryMuted
-              )
-            }
+            Text(
+              text = "Sign Up (New)",
+              fontSize = 12.sp,
+              fontWeight = if (authMode == 0) FontWeight.Bold else FontWeight.Medium,
+              color = if (authMode == 0) Color(0xFF111827) else Color(0xFF6B7280)
+            )
           }
 
           Box(
             modifier = Modifier
               .weight(1f)
               .clip(RoundedCornerShape(8.dp))
-              .background(if (contactMode == 1) Color.White else Color.Transparent)
+              .background(if (authMode == 1) Color.White else Color.Transparent)
               .clickable {
-                contactMode = 1
+                authMode = 1
                 errorMessage = null
               }
               .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center
           ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(
-                Icons.Default.Email,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = if (contactMode == 1) NavyPrimary else TextSecondaryMuted
-              )
-              Spacer(modifier = Modifier.width(4.dp))
-              Text(
-                text = "Email Address",
-                fontSize = 12.sp,
-                fontWeight = if (contactMode == 1) FontWeight.Bold else FontWeight.Medium,
-                color = if (contactMode == 1) NavyPrimary else TextSecondaryMuted
-              )
-            }
+            Text(
+              text = "Sign In",
+              fontSize = 12.sp,
+              fontWeight = if (authMode == 1) FontWeight.Bold else FontWeight.Medium,
+              color = if (authMode == 1) Color(0xFF111827) else Color(0xFF6B7280)
+            )
           }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Phone or Email Input
-        if (contactMode == 0) {
-          OutlinedTextField(
-            value = phoneNumber,
-            onValueChange = {
-              phoneNumber = it
-              errorMessage = null
-            },
-            placeholder = { Text("315 2292493", fontSize = 12.sp, color = TextSecondaryMuted) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
-            leadingIcon = {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 10.dp, end = 4.dp)
-              ) {
-                Text("🇵🇰 +92", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
-              }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-              focusedTextColor = Color(0xFF0A0F1D),
-              unfocusedTextColor = Color(0xFF0A0F1D),
-              cursorColor = NavyPrimary,
-              focusedContainerColor = Color.White,
-              unfocusedContainerColor = Color.White,
-              focusedBorderColor = NavyPrimary,
-              unfocusedBorderColor = BorderStroke
-            )
-          )
-        } else {
-          OutlinedTextField(
-            value = emailInput,
-            onValueChange = {
-              emailInput = it
-              errorMessage = null
-            },
-            placeholder = { Text("user@gmail.com", fontSize = 12.sp, color = TextSecondaryMuted) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-            leadingIcon = {
-              Icon(Icons.Default.Email, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(18.dp))
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-              focusedTextColor = Color(0xFF0A0F1D),
-              unfocusedTextColor = Color(0xFF0A0F1D),
-              cursorColor = NavyPrimary,
-              focusedContainerColor = Color.White,
-              unfocusedContainerColor = Color.White,
-              focusedBorderColor = NavyPrimary,
-              unfocusedBorderColor = BorderStroke
-            )
-          )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Password Field
+        Text(
+          text = if (authMode == 0)
+            "Register as a passenger to book chauffeur-driven rental cars across Pakistan."
+          else
+            "Enter your email or phone and password to access your bookings.",
+          fontSize = 11.5.sp,
+          color = Color(0xFF4B5563),
+          textAlign = TextAlign.Start,
+          modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 1. Full Name Field (Always for Sign Up)
+        if (authMode == 0) {
+          Text(
+            text = "Full Name",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF111827),
+            modifier = Modifier.fillMaxWidth()
+          )
+          Spacer(modifier = Modifier.height(4.dp))
+          OutlinedTextField(
+            value = userName,
+            onValueChange = {
+              userName = it
+              errorMessage = null
+            },
+            placeholder = { Text("e.g. Muhammad Raza", fontSize = 12.sp, color = Color(0xFF9CA3AF)) },
+            leadingIcon = {
+              Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF111827), modifier = Modifier.size(18.dp))
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF111827),
+              unfocusedTextColor = Color(0xFF111827),
+              cursorColor = Color(0xFF111827),
+              focusedContainerColor = Color.White,
+              unfocusedContainerColor = Color.White,
+              focusedBorderColor = Color(0xFF111827),
+              unfocusedBorderColor = Color(0xFFE5E7EB)
+            )
+          )
+
+          Spacer(modifier = Modifier.height(10.dp))
+        }
+
+        // 2. Email Address Field
+        Text(
+          text = "Email Address",
+          fontSize = 12.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color(0xFF111827),
+          modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        OutlinedTextField(
+          value = emailInput,
+          onValueChange = {
+            emailInput = it
+            errorMessage = null
+          },
+          placeholder = { Text("client@gmail.com", fontSize = 12.sp, color = Color(0xFF9CA3AF)) },
+          leadingIcon = {
+            Icon(Icons.Default.Email, contentDescription = null, tint = Color(0xFF111827), modifier = Modifier.size(18.dp))
+          },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(10.dp),
+          colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color(0xFF111827),
+            unfocusedTextColor = Color(0xFF111827),
+            cursorColor = Color(0xFF111827),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = Color(0xFF111827),
+            unfocusedBorderColor = Color(0xFFE5E7EB)
+          )
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 3. Phone Number Field (+92)
+        Text(
+          text = "Phone Number (+92)",
+          fontSize = 12.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color(0xFF111827),
+          modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        OutlinedTextField(
+          value = phoneNumber,
+          onValueChange = {
+            phoneNumber = it
+            errorMessage = null
+          },
+          placeholder = { Text("315 2292493", fontSize = 12.sp, color = Color(0xFF9CA3AF)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+          leadingIcon = {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.padding(start = 10.dp, end = 4.dp)
+            ) {
+              Text("🇵🇰 +92", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+            }
+          },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(10.dp),
+          colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color(0xFF111827),
+            unfocusedTextColor = Color(0xFF111827),
+            cursorColor = Color(0xFF111827),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = Color(0xFF111827),
+            unfocusedBorderColor = Color(0xFFE5E7EB)
+          )
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 4. NADRA CNIC Number (13 Digits)
+        Text(
+          text = "NADRA CNIC Number (13 Digits)",
+          fontSize = 12.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color(0xFF111827),
+          modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        OutlinedTextField(
+          value = cnicInput,
+          onValueChange = {
+            cnicInput = CnicValidator.formatCnic(it)
+            errorMessage = null
+          },
+          placeholder = { Text("42101-1234567-1", fontSize = 12.sp, color = Color(0xFF9CA3AF)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+          leadingIcon = {
+            Icon(Icons.Default.Badge, contentDescription = null, tint = Color(0xFF111827), modifier = Modifier.size(18.dp))
+          },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(10.dp),
+          colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color(0xFF111827),
+            unfocusedTextColor = Color(0xFF111827),
+            cursorColor = Color(0xFF111827),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = Color(0xFF111827),
+            unfocusedBorderColor = Color(0xFFE5E7EB)
+          )
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 5. Password Field
         Text(
           text = "Password",
           fontSize = 12.sp,
           fontWeight = FontWeight.SemiBold,
-          color = TextPrimaryDark,
+          color = Color(0xFF111827),
           modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -297,19 +353,19 @@ fun AuthDialog(
             password = it
             errorMessage = null
           },
-          placeholder = { Text("Min 8 chars, letters & numbers", fontSize = 12.sp, color = TextSecondaryMuted) },
+          placeholder = { Text("Min 8 characters (letters & numbers)", fontSize = 12.sp, color = Color(0xFF9CA3AF)) },
           singleLine = true,
           visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
           keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
           leadingIcon = {
-            Icon(Icons.Default.Lock, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF111827), modifier = Modifier.size(18.dp))
           },
           trailingIcon = {
             IconButton(onClick = { passwordVisible = !passwordVisible }) {
               Icon(
                 if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                 contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                tint = TextSecondaryMuted,
+                tint = Color(0xFF6B7280),
                 modifier = Modifier.size(18.dp)
               )
             }
@@ -317,13 +373,13 @@ fun AuthDialog(
           modifier = Modifier.fillMaxWidth(),
           shape = RoundedCornerShape(10.dp),
           colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color(0xFF0A0F1D),
-            unfocusedTextColor = Color(0xFF0A0F1D),
-            cursorColor = NavyPrimary,
+            focusedTextColor = Color(0xFF111827),
+            unfocusedTextColor = Color(0xFF111827),
+            cursorColor = Color(0xFF111827),
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,
-            focusedBorderColor = NavyPrimary,
-            unfocusedBorderColor = BorderStroke
+            focusedBorderColor = Color(0xFF111827),
+            unfocusedBorderColor = Color(0xFFE5E7EB)
           )
         )
 
@@ -337,14 +393,14 @@ fun AuthDialog(
           Icon(
             if (hasLength && hasAlphaNum) Icons.Default.CheckCircle else Icons.Default.Info,
             contentDescription = null,
-            tint = if (hasLength && hasAlphaNum) StatusGreen else TextSecondaryMuted,
+            tint = if (hasLength && hasAlphaNum) Color(0xFF15803D) else Color(0xFF6B7280),
             modifier = Modifier.size(12.dp)
           )
           Spacer(modifier = Modifier.width(4.dp))
           Text(
-            text = "Requires min 8 alphanumeric characters (letters + numbers)",
+            text = "Requires min 8 alphanumeric characters",
             fontSize = 10.5.sp,
-            color = if (hasLength && hasAlphaNum) StatusGreen else TextSecondaryMuted
+            color = if (hasLength && hasAlphaNum) Color(0xFF15803D) else Color(0xFF6B7280)
           )
         }
 
@@ -352,36 +408,38 @@ fun AuthDialog(
           Spacer(modifier = Modifier.height(8.dp))
           Text(
             text = err,
-            color = StatusRed,
+            color = Color(0xFFB91C1C),
             fontSize = 11.5.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.fillMaxWidth()
           )
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Sign In & Continue Button
+        // Submit Button (Client Account)
         Button(
           onClick = {
-            if (userName.isBlank()) {
+            if (authMode == 0 && userName.isBlank()) {
               errorMessage = "Please enter your full name."
               return@Button
             }
 
-            val identifier = if (contactMode == 0) {
-              val digits = phoneNumber.filter { it.isDigit() }
-              if (digits.length < 7) {
-                errorMessage = "Please enter a valid mobile number."
-                return@Button
-              }
-              if (digits.startsWith("0")) "+92 " + digits.substring(1) else "+92 $digits"
-            } else {
-              if (emailInput.isBlank() || !emailInput.contains("@")) {
-                errorMessage = "Please enter a valid email address."
-                return@Button
-              }
-              emailInput.trim()
+            if (emailInput.isBlank() || !emailInput.contains("@") || !emailInput.contains(".")) {
+              errorMessage = "Please enter a valid email address."
+              return@Button
+            }
+
+            val phoneDigits = phoneNumber.filter { it.isDigit() }
+            if (phoneDigits.length < 7) {
+              errorMessage = "Please enter a valid Pakistani mobile number."
+              return@Button
+            }
+
+            val cnicCheck = CnicValidator.validate(cnicInput)
+            if (!cnicCheck.isValid) {
+              errorMessage = cnicCheck.errorMessage ?: "Valid 13-digit NADRA CNIC is required."
+              return@Button
             }
 
             val valRes = PasswordValidator.validate(password)
@@ -393,20 +451,33 @@ fun AuthDialog(
             errorMessage = null
             isLoading = true
 
+            val formattedPhone = if (phoneDigits.startsWith("0")) "+92 " + phoneDigits.substring(1) else "+92 $phoneDigits"
+            val formattedCnic = CnicValidator.formatCnic(cnicInput)
+
             coroutineScope.launch {
               delay(350)
-              viewModel.loginWithPassword(
-                identifier = identifier,
-                name = userName.trim(),
-                isEmail = contactMode == 1
-              )
+              if (authMode == 0) {
+                viewModel.registerClient(
+                  name = userName.trim(),
+                  phone = formattedPhone,
+                  email = emailInput.trim(),
+                  cnic = formattedCnic
+                )
+              } else {
+                viewModel.loginWithPassword(
+                  identifier = emailInput.trim(),
+                  name = userName.ifBlank { emailInput.substringBefore("@").replaceFirstChar { it.uppercase() } },
+                  isEmail = true,
+                  cnic = formattedCnic
+                )
+              }
               isLoading = false
               onDismiss()
             }
           },
           enabled = !isLoading,
           shape = RoundedCornerShape(12.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
           modifier = Modifier
             .fillMaxWidth()
             .height(50.dp)
@@ -414,14 +485,14 @@ fun AuthDialog(
           if (isLoading) {
             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Signing In...", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("Processing...", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
           } else {
-            Icon(Icons.Default.Login, contentDescription = null, tint = Color.White)
+            Icon(if (authMode == 0) Icons.Default.PersonAdd else Icons.Default.Login, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Sign In & Continue",
+              text = if (authMode == 0) "Create Client Account" else "Sign In as Client",
               color = Color.White,
-              fontSize = 15.sp,
+              fontSize = 14.5.sp,
               fontWeight = FontWeight.Bold
             )
           }
@@ -429,25 +500,34 @@ fun AuthDialog(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Footer Trust indicators
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceEvenly
+        // Divert to Driver Partner Portal Card
+        Card(
+          shape = RoundedCornerShape(10.dp),
+          colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+          border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+          modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+              onDismiss()
+              viewModel.setShowDriverPartnerDialog(true)
+            }
         ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Verified, contentDescription = null, tint = StatusGreen, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("Verified Fleet", fontSize = 10.5.sp, color = TextSecondaryMuted)
-          }
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Shield, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("Secure Account", fontSize = 10.5.sp, color = TextSecondaryMuted)
-          }
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Headphones, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("24/7 Chauffeur", fontSize = 10.5.sp, color = TextSecondaryMuted)
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+              Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color(0xFF111827), modifier = Modifier.size(18.dp))
+              Spacer(modifier = Modifier.width(8.dp))
+              Column {
+                Text("Are you a Driver or Fleet Owner?", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+                Text("Requires Driving License & NADRA check", fontSize = 10.sp, color = Color(0xFF6B7280))
+              }
+            }
+            Text("Register as Driver →", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
           }
         }
       }

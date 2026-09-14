@@ -153,7 +153,7 @@ fun ReviewDialog(
 
         // 3. Comments
         Text(
-          text = if (currentLanguage == AppLanguage.URDU) "آپ کا تفصیلی تبصرہ (اختیاری)" else "Written Feedback (Optional)",
+          text = "Written Feedback (Optional)",
           fontSize = 12.sp,
           fontWeight = FontWeight.SemiBold,
           color = TextPrimaryDark

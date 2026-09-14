@@ -38,7 +38,8 @@ fun PakEDriveTopBar(
   modifier: Modifier = Modifier
 ) {
   Surface(
-    color = Color(0xFF132238),
+    color = Color(0xFFF8F9FA),
+    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
     modifier = modifier.fillMaxWidth()
   ) {
     Row(
@@ -63,7 +64,7 @@ fun PakEDriveTopBar(
               Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Notifications",
-                tint = Color.White,
+                tint = Color(0xFF111827),
                 modifier = Modifier.size(24.dp)
               )
             }
@@ -95,7 +96,7 @@ fun PakEDriveTopBar(
           ) {
             Text(
               text = currentCity,
-              color = Color.White,
+              color = Color(0xFF111827),
               fontSize = 15.sp,
               fontWeight = FontWeight.SemiBold
             )
@@ -103,7 +104,7 @@ fun PakEDriveTopBar(
             Icon(
               imageVector = Icons.Default.KeyboardArrowDown,
               contentDescription = "Select City",
-              tint = Color.White.copy(alpha = 0.8f),
+              tint = Color(0xFF4B5563),
               modifier = Modifier.size(18.dp)
             )
           }
@@ -111,7 +112,7 @@ fun PakEDriveTopBar(
 
         Text(
           text = "Hello, $userName",
-          color = Color.White,
+          color = Color(0xFF111827),
           fontSize = 15.sp,
           fontWeight = FontWeight.SemiBold
         )
@@ -133,7 +134,7 @@ fun PakEDriveTopBar(
         ) {
           Text(
             text = title,
-            color = Color.White,
+            color = Color(0xFF111827),
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold
           )
@@ -186,8 +187,30 @@ fun CarCard(
             .padding(horizontal = 6.dp, vertical = 6.dp)
         )
 
-        // "Featured" pill badge top-left
-        if (car.isFeatured) {
+        // "Featured" or "Partner Driver" pill badge top-left
+        if (car.isPartnerCar) {
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFF166534),
+            modifier = Modifier
+              .padding(6.dp)
+              .align(Alignment.TopStart)
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+              Icon(Icons.Default.Verified, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text(
+                text = "Partner Driver",
+                color = Color.White,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+              )
+            }
+          }
+        } else if (car.isFeatured) {
           Surface(
             shape = RoundedCornerShape(4.dp),
             color = Color(0xFF132238),
@@ -236,8 +259,8 @@ fun CarCard(
         Text(
           text = rateCaption,
           fontSize = 11.5.sp,
-          fontWeight = FontWeight.SemiBold,
-          color = Color(0xFF1E3A8A),
+          fontWeight = FontWeight.Bold,
+          color = Color(0xFF111827),
           maxLines = 1,
           overflow = TextOverflow.Ellipsis
         )
@@ -256,11 +279,11 @@ fun CarCard(
 
         Spacer(modifier = Modifier.height(3.dp))
 
-        // Line 4: Route in green/teal
+        // Line 4: Route info in readable dark tone
         Text(
           text = car.routeSnippet,
           fontSize = 10.5.sp,
-          color = Color(0xFF00897B),
+          color = Color(0xFF374151),
           fontWeight = FontWeight.Medium,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis

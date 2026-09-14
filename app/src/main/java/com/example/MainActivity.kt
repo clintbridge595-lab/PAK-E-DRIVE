@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -73,6 +74,7 @@ fun PakEDriveApp(viewModel: MainViewModel) {
   val bookingCar by viewModel.bookingCar.collectAsState()
   val confirmedBooking by viewModel.confirmedBooking.collectAsState()
   val showAuthDialog by viewModel.showAuthDialog.collectAsState()
+  val showDriverPartnerDialog by viewModel.showDriverPartnerDialog.collectAsState()
   val showNotifications by viewModel.showNotifications.collectAsState()
   val showFaqSupport by viewModel.showFaqSupport.collectAsState()
   val showBuildLogAnalyzer by viewModel.showBuildLogAnalyzer.collectAsState()
@@ -112,21 +114,23 @@ fun PakEDriveApp(viewModel: MainViewModel) {
         drawerContainerColor = Color.White,
         modifier = Modifier.width(310.dp)
       ) {
-        // Drawer Header
+        // Drawer Header (Realistic Off-White, Compact Brand Identity)
         Box(
           modifier = Modifier
             .fillMaxWidth()
-            .background(NavyPrimary)
+            .background(Color(0xFFF8F9FA))
+            .border(androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)))
             .statusBarsPadding()
-            .padding(20.dp)
+            .padding(16.dp)
         ) {
           Column {
             Box(
               modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(42.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(Color.White)
-                .padding(4.dp),
+                .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(8.dp))
+                .padding(3.dp),
               contentAlignment = Alignment.Center
             ) {
               Image(
@@ -136,34 +140,42 @@ fun PakEDriveApp(viewModel: MainViewModel) {
               )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
               text = userProfile.name,
-              color = Color.White,
-              fontSize = 17.sp,
+              color = Color(0xFF111827),
+              fontSize = 14.5.sp,
               fontWeight = FontWeight.Bold
             )
 
             Text(
-              text = userProfile.phone,
-              color = Color.White.copy(alpha = 0.8f),
-              fontSize = 12.sp
+              text = if (userProfile.phone.isNotBlank()) userProfile.phone else "+92 315 2292493",
+              color = Color(0xFF6B7280),
+              fontSize = 11.5.sp
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Surface(
-              shape = RoundedCornerShape(12.dp),
-              color = Color(0xFF25D366)
+              shape = RoundedCornerShape(10.dp),
+              color = Color(0xFFE6F4EA)
             ) {
               Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
               ) {
-                Icon(Icons.Default.Verified, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF137333), modifier = Modifier.size(11.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Verified Member", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(
+                  text = if (userProfile.accountType == "DRIVER" || userProfile.isDriverPartner)
+                    "Driver Partner (DLIMS & NADRA)"
+                  else
+                    "Client Account (NADRA Verified)",
+                  color = Color(0xFF137333),
+                  fontSize = 9.5.sp,
+                  fontWeight = FontWeight.Bold
+                )
               }
             }
           }
@@ -234,8 +246,19 @@ fun PakEDriveApp(viewModel: MainViewModel) {
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFE5E7EB))
 
         NavigationDrawerItem(
-          icon = { Icon(Icons.Default.Login, contentDescription = null, tint = OrangeAccent) },
-          label = { Text("Switch / Login Account", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OrangeAccent) },
+          icon = { Icon(Icons.Default.DriveEta, contentDescription = null, tint = Color(0xFF111827)) },
+          label = { Text("Driver Partner Portal (List Car)", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          selected = false,
+          onClick = {
+            coroutineScope.launch { drawerState.close() }
+            viewModel.setShowDriverPartnerDialog(true)
+          },
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+        )
+
+        NavigationDrawerItem(
+          icon = { Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF111827)) },
+          label = { Text("Client Sign Up / Sign In", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
           selected = false,
           onClick = {
             coroutineScope.launch { drawerState.close() }
@@ -411,6 +434,13 @@ fun PakEDriveApp(viewModel: MainViewModel) {
     AuthDialog(
       viewModel = viewModel,
       onDismiss = { viewModel.setShowAuthDialog(false) }
+    )
+  }
+
+  if (showDriverPartnerDialog) {
+    DriverPartnerDialog(
+      viewModel = viewModel,
+      onDismiss = { viewModel.setShowDriverPartnerDialog(false) }
     )
   }
 

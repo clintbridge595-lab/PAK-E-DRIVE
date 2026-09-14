@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainViewModel
 import com.example.util.AppLanguage
+import com.example.util.CnicValidator
 
 @Composable
 fun ProfileScreen(
@@ -43,6 +44,7 @@ fun ProfileScreen(
   var editEmail by remember(profile) { mutableStateOf(profile.email) }
   var editCity by remember(profile) { mutableStateOf(profile.city) }
   var editAddress by remember(profile) { mutableStateOf(profile.address) }
+  var editCnic by remember(profile) { mutableStateOf(profile.cnic) }
 
   var showDeleteConfirmDialog by remember { mutableStateOf(false) }
   var showLogoutConfirmDialog by remember { mutableStateOf(false) }
@@ -55,73 +57,77 @@ fun ProfileScreen(
       .verticalScroll(rememberScrollState())
       .padding(bottom = 90.dp)
   ) {
-    // Top Profile Header
+    // Top Profile Header (Realistic Off-White, Compact Identity)
     Surface(
-      color = NavyPrimary,
+      color = Color(0xFFF8F9FA),
+      border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
       modifier = Modifier.fillMaxWidth()
     ) {
       Column(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(20.dp),
+          .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
         Box(
           modifier = Modifier
-            .size(80.dp)
+            .size(54.dp)
             .clip(CircleShape)
-            .background(Color.White)
-            .border(2.dp, Color(0xFFE2E8F0), CircleShape),
+            .background(Color(0xFF0F172A))
+            .border(1.5.dp, Color(0xFFCBD5E1), CircleShape),
           contentAlignment = Alignment.Center
         ) {
           Text(
             text = profile.name.take(2).uppercase().ifBlank { "PD" },
-            color = NavyPrimary,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Black
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
           )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
           text = if (profile.isLoggedIn) profile.name else "Guest User",
-          color = Color.White,
-          fontSize = 18.sp,
+          color = Color(0xFF111827),
+          fontSize = 15.sp,
           fontWeight = FontWeight.Bold
         )
 
         Text(
           text = if (profile.isLoggedIn) profile.phone else "Sign in to manage bookings",
-          color = Color.White.copy(alpha = 0.8f),
-          fontSize = 13.sp
+          color = Color(0xFF4B5563),
+          fontSize = 12.sp
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (profile.isLoggedIn) {
           Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = Color.White.copy(alpha = 0.15f)
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFFE6F4EA)
           ) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
-              modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
-              Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF60A5FA), modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
+              Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF137333), modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(4.dp))
               Text(
-                text = "Verified Customer • ${bookings.size} Trips",
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
+                text = if (profile.accountType == "DRIVER" || profile.isDriverPartner)
+                  "Verified Driver Partner • DLIMS & NADRA Active"
+                else
+                  "Verified Client / Passenger Account • ${bookings.size} Bookings",
+                color = Color(0xFF137333),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
               )
             }
           }
         } else {
           Button(
             onClick = onOpenLogin,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
             shape = RoundedCornerShape(8.dp)
           ) {
             Text("Login / Register via OTP", color = Color.White, fontWeight = FontWeight.Bold)
@@ -188,9 +194,27 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(10.dp))
 
         if (!isEditing) {
+          ProfileInfoRow(
+            icon = Icons.Default.AccountCircle,
+            label = "Account Type",
+            value = if (profile.accountType == "DRIVER" || profile.isDriverPartner) "Driver Partner & Car Owner" else "Client & Passenger Account"
+          )
           ProfileInfoRow(icon = Icons.Default.Person, label = "Full Name", value = profile.name)
           ProfileInfoRow(icon = Icons.Default.Phone, label = "Phone", value = profile.phone)
           ProfileInfoRow(icon = Icons.Default.Email, label = "Email", value = profile.email)
+          ProfileInfoRow(icon = Icons.Default.Badge, label = "NADRA CNIC", value = if (profile.cnic.isNotBlank()) profile.cnic else "Not Provided")
+          if (profile.accountType == "DRIVER" || profile.isDriverPartner) {
+            ProfileInfoRow(
+              icon = Icons.Default.DriveEta,
+              label = "DLIMS Driving License",
+              value = if (profile.driverLicenseNumber.isNotBlank()) "${profile.driverLicenseNumber} (Verified)" else "Required for fleet driving"
+            )
+            ProfileInfoRow(
+              icon = Icons.Default.Security,
+              label = "License Authority",
+              value = profile.licenseIssuingAuthority.ifBlank { "DLIMS Traffic Police Pakistan" }
+            )
+          }
           ProfileInfoRow(icon = Icons.Default.LocationCity, label = "City", value = profile.city)
           ProfileInfoRow(icon = Icons.Default.Home, label = "Pickup Address", value = profile.address)
         } else {
@@ -237,6 +261,26 @@ fun ProfileScreen(
             value = editEmail,
             onValueChange = { editEmail = it },
             label = { Text("Email Address") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0A0F1D),
+              unfocusedTextColor = Color(0xFF0A0F1D),
+              cursorColor = NavyPrimary,
+              focusedContainerColor = Color.White,
+              unfocusedContainerColor = Color.White,
+              focusedBorderColor = NavyPrimary,
+              unfocusedBorderColor = BorderStroke
+            )
+          )
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          OutlinedTextField(
+            value = editCnic,
+            onValueChange = { editCnic = CnicValidator.formatCnic(it) },
+            label = { Text("NADRA CNIC (13 Digits)") },
+            placeholder = { Text("42101-1234567-1") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
@@ -305,15 +349,57 @@ fun ProfileScreen(
 
             Button(
               onClick = {
-                viewModel.updateProfile(editName, editPhone, editEmail, editCity, editAddress)
+                viewModel.updateProfile(editName, editPhone, editEmail, editCity, editAddress, editCnic)
                 isEditing = false
               },
-              colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
               shape = RoundedCornerShape(8.dp)
             ) {
               Text("Save Profile", color = Color.White, fontWeight = FontWeight.Bold)
             }
           }
+        }
+      }
+    }
+
+    // Driver Partner Portal Card (Realistic Off-White)
+    Card(
+      shape = RoundedCornerShape(16.dp),
+      colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+      border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+      elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = "Driver & Fleet Partner Portal",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111827)
+          )
+          Spacer(modifier = Modifier.height(3.dp))
+          Text(
+            text = "NADRA & DLIMS verified driver network across Pakistan",
+            fontSize = 11.5.sp,
+            color = Color(0xFF4B5563)
+          )
+        }
+
+        Button(
+          onClick = { viewModel.setShowDriverPartnerDialog(true) },
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
+          shape = RoundedCornerShape(8.dp)
+        ) {
+          Text("Open Portal", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
       }
     }
@@ -418,26 +504,25 @@ fun ProfileScreen(
             Icon(Icons.Default.Translate, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(10.dp))
             Column {
-              Text("Language / زبان", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+              Text("Language", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
               Text(
-                text = if (currentLanguage == AppLanguage.URDU) "اردو (Urdu Active)" else "English (US)",
+                text = "English (Active)",
                 fontSize = 11.sp,
                 color = TextSecondaryMuted
               )
             }
           }
 
-          Button(
-            onClick = { viewModel.toggleLanguage() },
-            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary.copy(alpha = 0.1f)),
-            shape = RoundedCornerShape(8.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+          Surface(
+            color = NavyPrimary.copy(alpha = 0.1f),
+            shape = RoundedCornerShape(8.dp)
           ) {
             Text(
-              text = if (currentLanguage == AppLanguage.URDU) "Switch to English" else "اردو میں بدلیں",
+              text = "English",
               color = NavyPrimary,
               fontSize = 11.sp,
-              fontWeight = FontWeight.Bold
+              fontWeight = FontWeight.Bold,
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
             )
           }
         }

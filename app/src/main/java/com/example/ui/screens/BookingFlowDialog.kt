@@ -36,9 +36,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.model.Booking
 import com.example.data.model.Car
+import com.example.data.model.PakistanRoutesData
 import com.example.ui.components.RouteVisualizerCard
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainViewModel
+import com.example.util.CnicValidator
 import com.example.util.PasswordValidator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -68,6 +70,8 @@ fun BookingFlowDialog(
   var customerName by remember(profile) { mutableStateOf(profile.name) }
   var customerPhone by remember(profile) { mutableStateOf(profile.phone) }
   var customerEmail by remember(profile) { mutableStateOf(profile.email) }
+  var customerCnic by remember(profile) { mutableStateOf(profile.cnic) }
+  var selectedRouteInfo by remember { mutableStateOf<com.example.data.model.PakistanRoute?>(null) }
   var contactMode by remember { mutableStateOf(0) } // 0: Mobile Number (+92), 1: Email Address
   var password by remember { mutableStateOf("") }
   var passwordVisible by remember { mutableStateOf(false) }
@@ -197,7 +201,77 @@ fun BookingFlowDialog(
           Spacer(modifier = Modifier.height(16.dp))
 
           // 2. Pickup & Drop Locations
-          Text(text = "2. Itinerary & Location", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+          Text(text = "2. Itinerary & Route Selection", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+          Spacer(modifier = Modifier.height(6.dp))
+
+          // Popular Pakistan Routes Quick Chips
+          Text(
+            text = "Popular Highway Routes:",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextSecondaryMuted
+          )
+          Spacer(modifier = Modifier.height(4.dp))
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            PakistanRoutesData.routes.forEach { r ->
+              val isRouteActive = pickupCity == r.fromCity && dropCity == r.toCity
+              SuggestionChip(
+                onClick = {
+                  pickupCity = r.fromCity
+                  dropCity = r.toCity
+                  selectedTripType = "Intercity Highway Tour"
+                  selectedRouteInfo = r
+                  if (r.distanceKm > 400 && durationDays == 1) {
+                    durationDays = if (r.distanceKm > 900) 3 else 2
+                  }
+                },
+                label = {
+                  Text(
+                    text = "${r.fromCity} ➔ ${r.toCity}",
+                    fontSize = 11.5.sp,
+                    fontWeight = if (isRouteActive) FontWeight.Bold else FontWeight.Medium
+                  )
+                },
+                colors = SuggestionChipDefaults.suggestionChipColors(
+                  containerColor = if (isRouteActive) NavyPrimary else Color(0xFFF1F5F9),
+                  labelColor = if (isRouteActive) Color.White else TextPrimaryDark
+                ),
+                border = SuggestionChipDefaults.suggestionChipBorder(
+                  enabled = true,
+                  borderColor = if (isRouteActive) NavyPrimary else BorderStroke
+                )
+              )
+            }
+          }
+
+          selectedRouteInfo?.let { r ->
+            if (pickupCity == r.fromCity && dropCity == r.toCity) {
+              Spacer(modifier = Modifier.height(6.dp))
+              Card(
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.Route, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(18.dp))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text(
+                    text = "${r.highwayName} • ${r.distanceKm} km • Est. ${r.estimatedDuration}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = NavyPrimary
+                  )
+                }
+              }
+            }
+          }
+
           Spacer(modifier = Modifier.height(8.dp))
 
           // Pickup City Selector & Address
@@ -501,6 +575,51 @@ fun BookingFlowDialog(
                 unfocusedBorderColor = BorderStroke
               )
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // CNIC for logged in user
+            OutlinedTextField(
+              value = customerCnic,
+              onValueChange = {
+                customerCnic = CnicValidator.formatCnic(it)
+                authErrorMessage = null
+              },
+              label = { Text("Customer CNIC (13 Digits Required)", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+              placeholder = { Text("42101-1234567-1", fontSize = 12.sp) },
+              singleLine = true,
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+              leadingIcon = {
+                Icon(Icons.Default.Badge, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(18.dp))
+              },
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(10.dp),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0A0F1D),
+                unfocusedTextColor = Color(0xFF0A0F1D),
+                cursorColor = NavyPrimary,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = NavyPrimary,
+                unfocusedBorderColor = BorderStroke
+              )
+            )
+
+            val memberCnicCheck = CnicValidator.validate(customerCnic)
+            Row(modifier = Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+              Icon(
+                if (memberCnicCheck.isValid) Icons.Default.CheckCircle else Icons.Default.Info,
+                contentDescription = null,
+                tint = if (memberCnicCheck.isValid) StatusGreen else OrangeAccent,
+                modifier = Modifier.size(12.dp)
+              )
+              Spacer(modifier = Modifier.width(4.dp))
+              Text(
+                text = if (memberCnicCheck.isValid) "CNIC Verified for Ride" else "Mandatory 13-digit Pakistani CNIC to complete booking",
+                fontSize = 10.5.sp,
+                color = if (memberCnicCheck.isValid) StatusGreen else OrangeAccent
+              )
+            }
           } else {
             Card(
               shape = RoundedCornerShape(14.dp),
@@ -551,6 +670,52 @@ fun BookingFlowDialog(
                     unfocusedBorderColor = BorderStroke
                   )
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Mandatory CNIC field
+                Text("NADRA CNIC (13 Digits)", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = customerCnic,
+                  onValueChange = {
+                    customerCnic = CnicValidator.formatCnic(it)
+                    authErrorMessage = null
+                  },
+                  placeholder = { Text("42101-1234567-1", fontSize = 12.sp, color = TextSecondaryMuted) },
+                  singleLine = true,
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                  leadingIcon = {
+                    Icon(Icons.Default.Badge, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(16.dp))
+                  },
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(8.dp),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0A0F1D),
+                    unfocusedTextColor = Color(0xFF0A0F1D),
+                    cursorColor = NavyPrimary,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = NavyPrimary,
+                    unfocusedBorderColor = BorderStroke
+                  )
+                )
+
+                val cnicV = CnicValidator.validate(customerCnic)
+                Row(modifier = Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                  Icon(
+                    if (cnicV.isValid) Icons.Default.CheckCircle else Icons.Default.Info,
+                    contentDescription = null,
+                    tint = if (cnicV.isValid) StatusGreen else TextSecondaryMuted,
+                    modifier = Modifier.size(11.dp)
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text(
+                    text = if (cnicV.isValid) "CNIC Format Verified" else "Mandatory 13-digit Pakistani CNIC to book car",
+                    fontSize = 10.sp,
+                    color = if (cnicV.isValid) StatusGreen else TextSecondaryMuted
+                  )
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -767,7 +932,7 @@ fun BookingFlowDialog(
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 Text("Total Estimated", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
-                Text("PKR ${String.format("%,d", calculatedTotal)}", fontSize = 18.sp, fontWeight = FontWeight.Black, color = OrangeAccent)
+                Text("PKR ${String.format("%,d", calculatedTotal)}", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFF111827))
               }
             }
           }
@@ -777,6 +942,15 @@ fun BookingFlowDialog(
           // Confirm and Submit Button (Enforces sign in & continue before booking!)
           Button(
             onClick = {
+              // STRICT CNIC VALIDATION - BOOKING BLOCKED WITHOUT CNIC
+              val cnicCheck = CnicValidator.validate(customerCnic)
+              if (!cnicCheck.isValid) {
+                authErrorMessage = cnicCheck.errorMessage ?: "Valid 13-digit Pakistani CNIC is required to book a car."
+                return@Button
+              }
+
+              val formattedCnic = CnicValidator.formatCnic(customerCnic)
+
               if (!isClientLoggedIn) {
                 if (customerName.isBlank()) {
                   authErrorMessage = "Please enter your full name."
@@ -812,7 +986,8 @@ fun BookingFlowDialog(
                   viewModel.loginWithPassword(
                     identifier = identifier,
                     name = customerName.trim(),
-                    isEmail = contactMode == 1
+                    isEmail = contactMode == 1,
+                    cnic = formattedCnic
                   )
 
                   val bookingId = "PED-${10000 + Random().nextInt(90000)}"
@@ -834,9 +1009,10 @@ fun BookingFlowDialog(
                     totalEstimatedPrice = calculatedTotal,
                     customerName = customerName.trim(),
                     customerPhone = if (contactMode == 0) identifier else "+92 315 2292493",
+                    customerCnic = formattedCnic,
                     status = "Driver Assigned",
-                    driverName = "Muhammad Aslam",
-                    driverPhone = "+92 315 2292493",
+                    driverName = car.partnerDriverName ?: "Muhammad Aslam",
+                    driverPhone = car.partnerPhone ?: "+92 315 2292493",
                     vehiclePlateNumber = "BLF-256 (Sindh)"
                   )
                   viewModel.completeBooking(newBooking)
@@ -848,7 +1024,7 @@ fun BookingFlowDialog(
                     rate = calculatedTotal.toLong()
                   )
 
-                  val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I signed in and booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Contact: $identifier."
+                  val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I signed in and booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Contact: $identifier, CNIC: $formattedCnic."
                   val url = "https://wa.me/923152292493?text=${Uri.encode(whatsappMsg)}"
                   val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                   try { context.startActivity(intent) } catch (_: Exception) {}
@@ -856,6 +1032,16 @@ fun BookingFlowDialog(
                 }
               } else {
                 val bookingId = "PED-${10000 + Random().nextInt(90000)}"
+                // Update profile with CNIC if not already saved
+                viewModel.updateProfile(
+                  name = customerName.ifBlank { profile.name },
+                  phone = customerPhone.ifBlank { profile.phone },
+                  email = profile.email,
+                  city = profile.city,
+                  address = profile.address,
+                  cnic = formattedCnic
+                )
+
                 val newBooking = Booking(
                   id = bookingId,
                   carId = car.id,
@@ -874,9 +1060,10 @@ fun BookingFlowDialog(
                   totalEstimatedPrice = calculatedTotal,
                   customerName = customerName.ifBlank { profile.name.ifBlank { "Valued Member" } },
                   customerPhone = customerPhone.ifBlank { profile.phone.ifBlank { "+92 315 2292493" } },
+                  customerCnic = formattedCnic,
                   status = "Driver Assigned",
-                  driverName = "Muhammad Aslam",
-                  driverPhone = "+92 315 2292493",
+                  driverName = car.partnerDriverName ?: "Muhammad Aslam",
+                  driverPhone = car.partnerPhone ?: "+92 315 2292493",
                   vehiclePlateNumber = "BLF-256 (Sindh)"
                 )
                 viewModel.completeBooking(newBooking)
@@ -888,7 +1075,7 @@ fun BookingFlowDialog(
                   rate = calculatedTotal.toLong()
                 )
 
-                val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Phone: $customerPhone."
+                val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: ${newBooking.customerName}, Phone: ${newBooking.customerPhone}, CNIC: $formattedCnic."
                 val url = "https://wa.me/923152292493?text=${Uri.encode(whatsappMsg)}"
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 try { context.startActivity(intent) } catch (_: Exception) {}
@@ -896,7 +1083,7 @@ fun BookingFlowDialog(
             },
             enabled = !isProcessingAuth,
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = if (!isClientLoggedIn) NavyPrimary else OrangeAccent),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
             modifier = Modifier
               .fillMaxWidth()
               .height(54.dp)

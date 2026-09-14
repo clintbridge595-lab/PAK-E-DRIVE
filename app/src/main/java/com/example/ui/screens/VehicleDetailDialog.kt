@@ -132,7 +132,7 @@ fun VehicleDetailDialog(
                   text = "PKR ${String.format("%,d", car.tenHourRate)}",
                   fontSize = 18.sp,
                   fontWeight = FontWeight.Bold,
-                  color = NavyPrimary
+                  color = Color(0xFF111827)
                 )
               }
 
@@ -144,7 +144,7 @@ fun VehicleDetailDialog(
                   text = "PKR ${String.format("%,d", car.dailyRate)}",
                   fontSize = 18.sp,
                   fontWeight = FontWeight.Bold,
-                  color = OrangeAccent
+                  color = Color(0xFF111827)
                 )
               }
             }
@@ -286,7 +286,7 @@ fun VehicleDetailDialog(
           Button(
             onClick = onBookNow,
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
             modifier = Modifier
               .fillMaxWidth()
               .height(52.dp)

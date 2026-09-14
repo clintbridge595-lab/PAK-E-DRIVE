@@ -50,8 +50,10 @@ fun HomeScreen(
   onOpenCitySelector: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  val fleet = viewModel.fleet
+  val fleet by viewModel.fleetCars.collectAsState()
   val selectedCity by viewModel.selectedCity.collectAsState()
+  val profile by viewModel.userProfile.collectAsState()
+  val routes = viewModel.routes
 
   // Showcase vehicles for the top horizontal carousel - cleanly centered, Coil loaded, auto-cycling
   // Prominently features the certified B6+ bulletproof lineup along with client favorites
@@ -156,6 +158,164 @@ fun HomeScreen(
       }
     }
 
+    // 1B. DRIVER PARTNER & CAR LISTING PORTAL BANNER (Hidden once user/driver joins)
+    if (!profile.isLoggedIn) {
+      item(span = { GridItemSpan(2) }) {
+        Card(
+          shape = RoundedCornerShape(12.dp),
+          colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+          border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+          elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .clickable { viewModel.setShowDriverPartnerDialog(true) }
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+              Box(
+                modifier = Modifier
+                  .size(36.dp)
+                  .clip(CircleShape)
+                  .background(Color(0xFF0F172A)),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(
+                  imageVector = Icons.Default.DirectionsCar,
+                  contentDescription = null,
+                  tint = Color.White,
+                  modifier = Modifier.size(20.dp)
+                )
+              }
+              Spacer(modifier = Modifier.width(10.dp))
+              Column {
+                Text(
+                  text = "Are you a Driver or Car Owner?",
+                  fontSize = 13.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = Color(0xFF111827)
+                )
+                Text(
+                  text = "Driver Portal: NADRA & License verification for rental cars",
+                  fontSize = 10.5.sp,
+                  color = Color(0xFF4B5563)
+                )
+              }
+            }
+
+            Button(
+              onClick = { viewModel.setShowDriverPartnerDialog(true) },
+              shape = RoundedCornerShape(16.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
+              contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+              modifier = Modifier.height(32.dp)
+            ) {
+              Text("Join / List", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+          }
+        }
+      }
+    }
+
+    // 1C. NATIONWIDE INTERCITY ROUTES SHOWCASE
+    item(span = { GridItemSpan(2) }) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(top = 2.dp)
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "Intercity Highway Routes",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111827)
+          )
+          Text(
+            text = "Chauffeur Included",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF166534)
+          )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+
+        androidx.compose.foundation.lazy.LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          contentPadding = PaddingValues(horizontal = 2.dp)
+        ) {
+          items(routes.size) { index ->
+            val route = routes[index]
+            Surface(
+              shape = RoundedCornerShape(10.dp),
+              color = Color.White,
+              border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+              modifier = Modifier
+                .width(180.dp)
+                .clickable {
+                  val matchedCar = fleet.firstOrNull { it.fromCity.equals(route.fromCity, ignoreCase = true) }
+                    ?: fleet.firstOrNull()
+                  if (matchedCar != null) {
+                    onOpenBooking(matchedCar)
+                  }
+                }
+            ) {
+              Column(modifier = Modifier.padding(10.dp)) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  Text(
+                    text = "${route.fromCity} ➔ ${route.toCity}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF111827),
+                    maxLines = 1
+                  )
+                }
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                  text = "${route.highwayName} • ${route.distanceKm} km",
+                  fontSize = 10.sp,
+                  color = Color(0xFF6B7280),
+                  maxLines = 1
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(
+                    text = "Rs. %,d".format(route.startingRate),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF111827)
+                  )
+                  Text(
+                    text = route.estimatedDuration,
+                    fontSize = 9.5.sp,
+                    color = Color(0xFF111827),
+                    fontWeight = FontWeight.SemiBold
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     // 2. "BOOK WITH US!" BANNER ROW (matching video 00:01)
     item(span = { GridItemSpan(2) }) {
       Row(
@@ -178,7 +338,7 @@ fun HomeScreen(
             if (firstCar != null) onOpenBooking(firstCar)
           },
           shape = RoundedCornerShape(20.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF132238)),
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
           contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
           modifier = Modifier.height(36.dp)
         ) {
@@ -253,7 +413,7 @@ fun HomeScreen(
                 .padding(horizontal = 3.dp)
                 .size(if (isCurrent) 8.dp else 6.dp)
                 .clip(CircleShape)
-                .background(if (isCurrent) Color(0xFF132238) else Color(0xFFD1D5DB))
+                .background(if (isCurrent) Color(0xFF111827) else Color(0xFFD1D5DB))
             )
           }
         }

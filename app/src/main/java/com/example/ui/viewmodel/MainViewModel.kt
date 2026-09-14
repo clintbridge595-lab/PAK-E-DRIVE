@@ -42,8 +42,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
   private val repository = CarRentalRepository(application)
 
-  val fleet: List<Car> = repository.fleet
+  val fleetCars: StateFlow<List<Car>> = repository.fleetCars
+  val fleet: List<Car> get() = repository.fleet
   val cities: List<String> = repository.pakistaniCities
+  val routes: List<com.example.data.model.PakistanRoute> = com.example.data.model.PakistanRoutesData.routes
 
   val userProfile: StateFlow<UserProfile> = repository.userProfile
   val bookings: StateFlow<List<Booking>> = repository.allBookings
@@ -77,6 +79,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
   private val _showAuthDialog = MutableStateFlow(false)
   val showAuthDialog: StateFlow<Boolean> = _showAuthDialog.asStateFlow()
+
+  private val _showDriverPartnerDialog = MutableStateFlow(false)
+  val showDriverPartnerDialog: StateFlow<Boolean> = _showDriverPartnerDialog.asStateFlow()
+
+  private val _selectedPakistanRoute = MutableStateFlow<com.example.data.model.PakistanRoute?>(null)
+  val selectedPakistanRoute: StateFlow<com.example.data.model.PakistanRoute?> = _selectedPakistanRoute.asStateFlow()
 
   private val _showNotifications = MutableStateFlow(false)
   val showNotifications: StateFlow<Boolean> = _showNotifications.asStateFlow()
@@ -294,12 +302,67 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  fun updateProfile(name: String, phone: String, email: String, city: String, address: String) {
-    repository.updateProfile(name, phone, email, city, address)
+  fun setShowDriverPartnerDialog(show: Boolean) {
+    _showDriverPartnerDialog.value = show
   }
 
-  fun verifyOtpAndLogin(phone: String, name: String) {
-    repository.loginUser(phone, name)
+  fun selectRoute(route: com.example.data.model.PakistanRoute?) {
+    _selectedPakistanRoute.value = route
+    if (route != null) {
+      _selectedCity.value = route.fromCity
+    }
+  }
+
+  fun addPartnerCar(car: Car) {
+    repository.addPartnerCar(car)
+    addNotification(
+      title = "Car Listed on PAK E DRIVE",
+      message = "Mubarak! Your ${car.name} (${car.variant}) is now live across Pakistan for rentals."
+    )
+  }
+
+  fun registerDriverPartner(
+    name: String,
+    phone: String,
+    email: String,
+    cnic: String,
+    licenseNumber: String,
+    isNadraVerified: Boolean = true,
+    isLicenseVerified: Boolean = true,
+    licenseAuthority: String = "DLIMS Traffic Police"
+  ) {
+    repository.registerDriverPartner(
+      name = name,
+      phone = phone,
+      email = email,
+      cnic = cnic,
+      licenseNumber = licenseNumber,
+      isNadraVerified = isNadraVerified,
+      isLicenseVerified = isLicenseVerified,
+      licenseIssuingAuthority = licenseAuthority
+    )
+    addNotification(
+      title = "NADRA & DLIMS Driver Verified",
+      message = "Official verification completed for $name! NADRA Pak-ID ($cnic) & $licenseAuthority ($licenseNumber) confirmed."
+    )
+    _showDriverPartnerDialog.value = false
+  }
+
+  fun registerClient(name: String, phone: String, email: String, cnic: String) {
+    repository.registerClient(name, phone, email, cnic)
+    addNotification(
+      title = "Client Account Created",
+      message = "Welcome to PAK E DRIVE, $name! Your client account is active. You can now book rental cars."
+    )
+    _showAuthDialog.value = false
+  }
+
+  fun updateProfile(name: String, phone: String, email: String, city: String, address: String, cnic: String = "") {
+    repository.updateProfile(name, phone, email, city, address, cnic)
+  }
+
+  fun verifyOtpAndLogin(phone: String, name: String, cnic: String = "") {
+    repository.loginUser(phone, name, cnic)
     addNotification(
       title = "Login Verified",
       message = "Welcome to PAK E DRIVE, $name! Your phone $phone has been verified."
@@ -307,11 +370,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     _showAuthDialog.value = false
   }
 
-  fun loginWithPassword(identifier: String, name: String, isEmail: Boolean) {
-    repository.loginWithPassword(identifier, name, isEmail)
+  fun loginWithPassword(identifier: String, name: String, isEmail: Boolean, cnic: String = "") {
+    repository.loginWithPassword(identifier, name, isEmail, cnic)
     addNotification(
       title = "Account Verified",
-      message = "Welcome to PAK E DRIVE, ${name.ifBlank { "Member" }}! You have successfully signed in."
+      message = "Welcome to PAK E DRIVE, ${name.ifBlank { "Member" }}! CNIC verified."
     )
     _showAuthDialog.value = false
   }

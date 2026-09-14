@@ -23,6 +23,7 @@ data class Booking(
   val totalEstimatedPrice: Int,
   val customerName: String,
   val customerPhone: String,
+  val customerCnic: String = "", // Pakistani CNIC 13 digits (Mandatory for rental security)
   val status: String, // "Requested", "Confirmed", "Driver Assigned", "On the Way", "Completed", "Cancelled"
   val driverName: String = "Muhammad Aslam",
   val driverPhone: String = "+92 315 2292493",

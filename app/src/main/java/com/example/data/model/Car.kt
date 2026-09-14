@@ -23,5 +23,9 @@ data class Car(
   val rating: Double = 4.9,
   val reviewCount: Int = 14,
   val description: String = "",
-  val features: List<String> = listOf("Chauffeur Driven", "Full Chill AC", "Clean Interior", "Toll Tax Support")
+  val features: List<String> = listOf("Chauffeur Driven", "Full Chill AC", "Clean Interior", "Toll Tax Support"),
+  val isPartnerCar: Boolean = false,
+  val partnerDriverName: String = "",
+  val partnerCnic: String = "",
+  val partnerPhone: String = ""
 )

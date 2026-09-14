@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import com.example.data.model.Booking
 import com.example.data.model.Review
 
-@Database(entities = [Booking::class, Review::class], version = 2, exportSchema = false)
+@Database(entities = [Booking::class, Review::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
   abstract fun bookingDao(): BookingDao
   abstract fun reviewDao(): ReviewDao
