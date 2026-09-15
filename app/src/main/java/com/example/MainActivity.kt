@@ -30,7 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.components.BuildLogAnalyzerDialog
+import com.example.ui.components.NetworkTimeoutErrorDialog
 import com.example.ui.components.PakEDriveTopBar
+import com.example.ui.dialogs.CnicAndBiometricVerificationDialog
+import com.example.ui.dialogs.PakistaniPaymentDialog
 import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AuthViewModel
@@ -75,6 +78,10 @@ fun PakEDriveApp(viewModel: MainViewModel) {
   val confirmedBooking by viewModel.confirmedBooking.collectAsState()
   val showAuthDialog by viewModel.showAuthDialog.collectAsState()
   val showDriverPartnerDialog by viewModel.showDriverPartnerDialog.collectAsState()
+  val showVerificationDialog by viewModel.showVerificationDialog.collectAsState()
+  val showLiveTracking by viewModel.showLiveTracking.collectAsState()
+  val showPaymentDialog by viewModel.showPaymentDialog.collectAsState()
+  val showTimeoutError by viewModel.showTimeoutError.collectAsState()
   val showNotifications by viewModel.showNotifications.collectAsState()
   val showFaqSupport by viewModel.showFaqSupport.collectAsState()
   val showBuildLogAnalyzer by viewModel.showBuildLogAnalyzer.collectAsState()
@@ -263,6 +270,50 @@ fun PakEDriveApp(viewModel: MainViewModel) {
           onClick = {
             coroutineScope.launch { drawerState.close() }
             viewModel.setShowAuthDialog(true)
+          },
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+        )
+
+        NavigationDrawerItem(
+          icon = { Icon(Icons.Default.Navigation, contentDescription = null, tint = Color(0xFF1E88E5)) },
+          label = { Text("Live GPS Ride Tracking", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          selected = false,
+          onClick = {
+            coroutineScope.launch { drawerState.close() }
+            viewModel.setLiveTrackingVisible(true)
+          },
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+        )
+
+        NavigationDrawerItem(
+          icon = { Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = Color(0xFF2E7D32)) },
+          label = { Text("NADRA & DLIMS Verification", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          selected = false,
+          onClick = {
+            coroutineScope.launch { drawerState.close() }
+            viewModel.setVerificationDialogVisible(true)
+          },
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+        )
+
+        NavigationDrawerItem(
+          icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = Color(0xFFD97706)) },
+          label = { Text("Advance Payment & Escrow", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          selected = false,
+          onClick = {
+            coroutineScope.launch { drawerState.close() }
+            viewModel.setPaymentDialogCar(viewModel.fleet.firstOrNull())
+          },
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+        )
+
+        NavigationDrawerItem(
+          icon = { Icon(Icons.Default.WifiOff, contentDescription = null, tint = Color(0xFFDC2626)) },
+          label = { Text("Network Timeout Simulator", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          selected = false,
+          onClick = {
+            coroutineScope.launch { drawerState.close() }
+            viewModel.setTimeoutErrorVisible(true)
           },
           modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
         )
@@ -485,6 +536,46 @@ fun PakEDriveApp(viewModel: MainViewModel) {
       selectedCity = selectedCity,
       onCitySelected = { city -> viewModel.selectCity(city) },
       onDismiss = { showCitySelector = false }
+    )
+  }
+
+  if (showLiveTracking) {
+    GoogleLiveTrackingScreen(
+      onBack = { viewModel.setLiveTrackingVisible(false) }
+    )
+  }
+
+  if (showVerificationDialog) {
+    CnicAndBiometricVerificationDialog(
+      isDriver = userProfile.accountType == "DRIVER",
+      onDismiss = { viewModel.setVerificationDialogVisible(false) },
+      onVerificationComplete = { cnic, license, isFaceVerified ->
+        viewModel.completeFullIdentityVerification(cnic, license, isFaceVerified)
+      }
+    )
+  }
+
+  showPaymentDialog?.let { car ->
+    PakistaniPaymentDialog(
+      bookingFare = car.dailyRate.toDouble(),
+      carName = car.name,
+      onDismiss = { viewModel.setPaymentDialogCar(null) },
+      onPaymentSuccess = { txnId, gateway, amount ->
+        viewModel.onPaymentCompleted(txnId, gateway, amount, car)
+      }
+    )
+  }
+
+  if (showTimeoutError) {
+    NetworkTimeoutErrorDialog(
+      errorCode = "504 Gateway Timeout",
+      errorMessage = "PAK E DRIVE High-Speed Cloud Server connection timed out. Android WorkManager offline engine will synchronize queued bookings automatically.",
+      onRetry = {
+        viewModel.setTimeoutErrorVisible(false)
+      },
+      onDismiss = {
+        viewModel.setTimeoutErrorVisible(false)
+      }
     )
   }
 }

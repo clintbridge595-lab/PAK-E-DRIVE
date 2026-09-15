@@ -1024,6 +1024,16 @@ fun BookingFlowDialog(
                     rate = calculatedTotal.toLong()
                   )
 
+                  com.example.offline.OfflineSyncManager.enqueueOfflineBooking(
+                    context = context,
+                    pickup = "$pickupCity, $pickupAddress",
+                    dropoff = "$dropCity, $dropAddress",
+                    carName = car.name,
+                    fare = calculatedTotal.toDouble(),
+                    clientName = customerName.trim(),
+                    phone = if (contactMode == 0) identifier else "+92 315 2292493"
+                  )
+
                   val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I signed in and booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: $customerName, Contact: $identifier, CNIC: $formattedCnic."
                   val url = "https://wa.me/923152292493?text=${Uri.encode(whatsappMsg)}"
                   val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -1073,6 +1083,16 @@ fun BookingFlowDialog(
                   fromCity = pickupCity,
                   toCity = dropCity,
                   rate = calculatedTotal.toLong()
+                )
+
+                com.example.offline.OfflineSyncManager.enqueueOfflineBooking(
+                  context = context,
+                  pickup = "$pickupCity, $pickupAddress",
+                  dropoff = "$dropCity, $dropAddress",
+                  carName = car.name,
+                  fare = calculatedTotal.toDouble(),
+                  clientName = newBooking.customerName,
+                  phone = newBooking.customerPhone
                 )
 
                 val whatsappMsg = "Assalam-o-Alaikum PAK E DRIVE! I booked ${car.name} (Booking ID: #$bookingId) for $pickupCity to $dropCity on $selectedDate at $selectedTime. Duration: $durationDays Day(s). Total: PKR ${String.format("%,d", calculatedTotal)}. Name: ${newBooking.customerName}, Phone: ${newBooking.customerPhone}, CNIC: $formattedCnic."
