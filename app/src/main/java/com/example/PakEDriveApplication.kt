@@ -3,15 +3,33 @@ package com.example
 import android.app.Application
 import android.os.Bundle
 import android.util.Log
+import com.pomo.mypomo.BuildConfig
+import com.example.data.repository.CrashLogRepository
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class PakEDriveApplication : Application() {
 
   companion object {
     @Volatile
     private var analyticsInstance: FirebaseAnalytics? = null
+    @Volatile
+    private var crashLogRepoInstance: CrashLogRepository? = null
+
+    fun getCrashLogRepository(): CrashLogRepository? = crashLogRepoInstance
+
+    fun logCrash(throwable: Throwable, tag: String = "AppException", severity: String = "CRITICAL") {
+      crashLogRepoInstance?.let { repo ->
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+          repo.logException(throwable, tag, severity)
+        }
+      }
+    }
 
     fun logBookingRoute(carName: String, fromCity: String, toCity: String, rate: Long) {
       try {
@@ -47,6 +65,30 @@ class PakEDriveApplication : Application() {
 
   override fun onCreate() {
     super.onCreate()
+    // Initialize offline Room crash repository
+    try {
+      val repo = CrashLogRepository.getInstance(this)
+      crashLogRepoInstance = repo
+
+      // Global uncaught exception handler to store crashes in Room when offline
+      val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+      Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+        try {
+          kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+            repo.logException(
+              throwable = throwable,
+              tag = "UncaughtCrash_${thread.name}",
+              severity = "CRITICAL",
+              customMessage = "Fatal uncaught crash on thread ${thread.name}: ${throwable.message}"
+            )
+          }
+        } catch (_: Exception) {}
+        defaultHandler?.uncaughtException(thread, throwable)
+      }
+    } catch (e: Exception) {
+      Log.w("PakEDriveApp", "Error setting up Room CrashLogRepository: ${e.message}")
+    }
+
     try {
       if (FirebaseApp.getApps(this).isNotEmpty()) {
         val crashlytics = FirebaseCrashlytics.getInstance()
@@ -65,8 +107,8 @@ class PakEDriveApplication : Application() {
       } else {
         Log.i("PakEDriveApp", "FirebaseApp not initialized (no google-services.json). Firebase skipped gracefully.")
       }
-    } catch (e: Exception) {
-      Log.w("PakEDriveApp", "Firebase initialization skipped: ${e.message}")
+    } catch (t: Throwable) {
+      Log.w("PakEDriveApp", "Firebase initialization skipped safely: ${t.message}")
     }
   }
 }

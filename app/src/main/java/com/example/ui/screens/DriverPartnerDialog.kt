@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.R
+import com.pomo.mypomo.R
 import com.example.data.model.Car
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainViewModel

@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.R
+import com.pomo.mypomo.R
 import com.example.data.model.Car
 import com.example.ui.components.CarCard
 import com.example.ui.viewmodel.MainViewModel

@@ -14,6 +14,12 @@ class NetworkMonitor(context: Context) {
   private val connectivityManager =
     context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
+  fun isCurrentlyOnline(): Boolean {
+    val activeNetwork = connectivityManager.activeNetwork ?: return false
+    val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+  }
+
   val isOnline: Flow<Boolean> = callbackFlow {
     val initialActiveNetwork = connectivityManager.activeNetwork
     val initialCapabilities = connectivityManager.getNetworkCapabilities(initialActiveNetwork)

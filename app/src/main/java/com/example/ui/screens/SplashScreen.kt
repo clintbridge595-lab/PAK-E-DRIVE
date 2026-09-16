@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -58,7 +59,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
   LaunchedEffect(Unit) {
     startAnimation = true
     progress = 1.0f
-    delay(2200)
+    delay(1200)
     onTimeout()
   }
 
@@ -79,6 +80,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
     modifier = Modifier
       .fillMaxSize()
       .background(splashGradient)
+      .clickable { onTimeout() }
       .windowInsetsPadding(WindowInsets.statusBars),
     contentAlignment = Alignment.Center
   ) {

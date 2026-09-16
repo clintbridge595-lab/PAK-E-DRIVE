@@ -2,7 +2,7 @@ package com.example.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.R
+import com.pomo.mypomo.R
 import com.example.data.local.AppDatabase
 import com.example.data.model.Booking
 import com.example.data.model.Car

@@ -24,11 +24,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
+import com.pomo.mypomo.R
+import com.example.data.repository.CrashLogRepository
+import com.example.ui.components.AiCodeFixDrawer
 import com.example.ui.components.BuildLogAnalyzerDialog
 import com.example.ui.components.NetworkTimeoutErrorDialog
 import com.example.ui.components.PakEDriveTopBar
@@ -90,6 +93,11 @@ fun PakEDriveApp(viewModel: MainViewModel) {
   val currentLanguage by viewModel.currentLanguage.collectAsState()
   val unreadCount by viewModel.unreadNotificationCount.collectAsState()
   var showCitySelector by remember { mutableStateOf(false) }
+  var showAiDrawer by remember { mutableStateOf(false) }
+
+  // Crash Log & Offline Sync
+  val crashLogRepo = remember { CrashLogRepository.getInstance(context) }
+  val unsyncedCrashCount by crashLogRepo.getUnsyncedCount().collectAsState(initial = 0)
 
   // Network state monitoring
   val networkMonitor = remember { NetworkMonitor(context) }
@@ -337,12 +345,47 @@ fun PakEDriveApp(viewModel: MainViewModel) {
       snackbarHost = {
         SnackbarHost(hostState = snackbarHostState)
       },
+      floatingActionButton = {
+        FloatingActionButton(
+          onClick = { showAiDrawer = true },
+          containerColor = PakGreen,
+          contentColor = Color.White,
+          shape = RoundedCornerShape(16.dp),
+          modifier = Modifier.testTag("fab_ai_code_fix")
+        ) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+          ) {
+            Icon(
+              imageVector = Icons.Default.AutoAwesome,
+              contentDescription = "AI Fix Drawer",
+              tint = Color.White,
+              modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+              text = "AI Fix",
+              fontWeight = FontWeight.Bold,
+              fontSize = 13.sp,
+              color = Color.White
+            )
+            if (unsyncedCrashCount > 0) {
+              Spacer(modifier = Modifier.width(6.dp))
+              Badge(containerColor = MaterialTheme.colorScheme.error) {
+                Text("$unsyncedCrashCount")
+              }
+            }
+          }
+        }
+      },
+      floatingActionButtonPosition = FabPosition.End,
       topBar = {
         Column {
           PakEDriveTopBar(
             selectedTab = selectedTab,
             currentCity = selectedCity,
-            userName = userProfile.name.split(" ").firstOrNull() ?: "Mehdi",
+            userName = userProfile.name.split(" ").firstOrNull()?.ifBlank { "Mehdi" } ?: "Mehdi",
             unreadCount = unreadCount,
             onNotificationsClick = { viewModel.setShowNotifications(true) },
             onCityClick = { showCitySelector = true }
@@ -576,6 +619,12 @@ fun PakEDriveApp(viewModel: MainViewModel) {
       onDismiss = {
         viewModel.setTimeoutErrorVisible(false)
       }
+    )
+  }
+
+  if (showAiDrawer) {
+    AiCodeFixDrawer(
+      onDismiss = { showAiDrawer = false }
     )
   }
 }

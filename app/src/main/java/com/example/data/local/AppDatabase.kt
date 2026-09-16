@@ -7,10 +7,11 @@ import androidx.room.RoomDatabase
 import com.example.data.model.Booking
 import com.example.data.model.Review
 
-@Database(entities = [Booking::class, Review::class], version = 3, exportSchema = false)
+@Database(entities = [Booking::class, Review::class, CrashLog::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
   abstract fun bookingDao(): BookingDao
   abstract fun reviewDao(): ReviewDao
+  abstract fun crashLogDao(): CrashLogDao
 
   companion object {
     @Volatile

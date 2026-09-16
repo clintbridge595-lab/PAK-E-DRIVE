@@ -1,7 +1,7 @@
 package com.example.data.gemini
 
 import android.util.Log
-import com.example.BuildConfig
+import com.pomo.mypomo.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
