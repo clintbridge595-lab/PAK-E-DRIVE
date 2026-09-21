@@ -55,6 +55,11 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <service
+            android:name="com.example.services.BuildOutputParserService"
+            android:enabled="true"
+            android:exported="false" />
+
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyPakEDrivePlaceholderKeyForMaps" />

@@ -24,11 +24,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.gemini.BuildErrorSeverity
 import com.example.data.gemini.BuildErrorStatus
 import com.example.data.gemini.GeminiBuildLogAnalyzer
 import com.example.data.gemini.IdentifiedBuildError
 import com.example.ui.theme.*
+import com.example.ui.viewmodel.BuildLogViewModel
 import kotlinx.coroutines.launch
 
 val SampleLogPresets = listOf(
@@ -67,53 +70,71 @@ fun BuildLogAnalyzerDialog(
   onDismiss: () -> Unit,
   onFixApplied: ((IdentifiedBuildError) -> Unit)? = null
 ) {
-  Dialog(onDismissRequest = onDismiss) {
+  val buildLogViewModel: BuildLogViewModel = viewModel()
+  var showManualInputView by remember { mutableStateOf(false) }
+
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
     Card(
       shape = RoundedCornerShape(20.dp),
       colors = CardDefaults.cardColors(containerColor = Color.White),
       modifier = Modifier
-        .fillMaxWidth()
-        .fillMaxHeight(0.9f)
+        .fillMaxWidth(0.96f)
+        .fillMaxHeight(0.92f)
     ) {
-      Column(
-        modifier = Modifier
-          .fillMaxSize()
-          .padding(16.dp)
-      ) {
-        // Header
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
+      if (showManualInputView) {
+        Column(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
         ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-              modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(NavyPrimary.copy(alpha = 0.1f)),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(20.dp))
+          // Header
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Box(
+                modifier = Modifier
+                  .size(36.dp)
+                  .clip(CircleShape)
+                  .background(NavyPrimary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(20.dp))
+              }
+              Spacer(modifier = Modifier.width(10.dp))
+              Column {
+                Text("Manual Log Analyzer", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+                Text("Paste raw snippet for Gemini diagnosis", fontSize = 11.sp, color = TextSecondaryMuted)
+              }
             }
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-              Text("Admin Diagnostic Console", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
-              Text("Internal System Diagnostics", fontSize = 11.sp, color = TextSecondaryMuted)
+
+            Row {
+              TextButton(onClick = { showManualInputView = false }) {
+                Text("Back to Live Build", fontSize = 12.sp, color = NavyPrimary)
+              }
+              IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondaryMuted)
+              }
             }
           }
 
-          IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondaryMuted)
-          }
+          Spacer(modifier = Modifier.height(10.dp))
+
+          BuildLogAnalyzerComponent(
+            onFixApplied = onFixApplied,
+            modifier = Modifier.weight(1f)
+          )
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Embedded Analyzer Component
-        BuildLogAnalyzerComponent(
-          onFixApplied = onFixApplied,
-          modifier = Modifier.weight(1f)
+      } else {
+        RealtimeBuildLogViewer(
+          viewModel = buildLogViewModel,
+          onDismiss = onDismiss,
+          modifier = Modifier.fillMaxSize()
         )
       }
     }

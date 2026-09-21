@@ -38,7 +38,9 @@ import com.example.data.gemini.IdentifiedBuildError
 import com.example.data.local.CrashLog
 import com.example.data.repository.CrashLogRepository
 import com.example.ui.theme.*
+import com.example.ui.viewmodel.BuildLogViewModel
 import com.example.util.NetworkMonitor
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -218,6 +220,11 @@ fun AiCodeFixDrawer(
           onClick = { selectedTab = 2 },
           text = { Text("Preset Errors") }
         )
+        Tab(
+          selected = selectedTab == 3,
+          onClick = { selectedTab = 3 },
+          text = { Text("Build Health") }
+        )
       }
 
       Spacer(modifier = Modifier.height(10.dp))
@@ -283,6 +290,14 @@ fun AiCodeFixDrawer(
                 isAnalyzing = false
               }
             }
+          )
+        }
+        3 -> {
+          // Tab 3: Build Health Dashboard & Real-Time Logs
+          val buildLogVm: BuildLogViewModel = viewModel()
+          RealtimeBuildLogViewer(
+            viewModel = buildLogVm,
+            modifier = Modifier.fillMaxSize()
           )
         }
       }

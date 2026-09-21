@@ -326,6 +326,17 @@ fun PakEDriveApp(viewModel: MainViewModel) {
           modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
         )
 
+        NavigationDrawerItem(
+          icon = { Icon(Icons.Default.Terminal, contentDescription = null, tint = NavyPrimary) },
+          label = { Text("Gradle Build Health & Logs (AI)", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          selected = false,
+          onClick = {
+            coroutineScope.launch { drawerState.close() }
+            viewModel.setShowBuildLogAnalyzer(true)
+          },
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+        )
+
         Spacer(modifier = Modifier.weight(1f))
 
         // Drawer Footer
@@ -625,6 +636,12 @@ fun PakEDriveApp(viewModel: MainViewModel) {
   if (showAiDrawer) {
     AiCodeFixDrawer(
       onDismiss = { showAiDrawer = false }
+    )
+  }
+
+  if (showBuildLogAnalyzer) {
+    BuildLogAnalyzerDialog(
+      onDismiss = { viewModel.setShowBuildLogAnalyzer(false) }
     )
   }
 }
