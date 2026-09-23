@@ -34,6 +34,9 @@ class OfflineBookingWorker(appContext: Context, workerParams: WorkerParameters) 
     )
 
     return try {
+      if (com.google.firebase.FirebaseApp.getApps(applicationContext).isEmpty()) {
+        return Result.success()
+      }
       val db = FirebaseFirestore.getInstance()
       db.collection("offline_queued_bookings").add(bookingData).await()
       Result.success()

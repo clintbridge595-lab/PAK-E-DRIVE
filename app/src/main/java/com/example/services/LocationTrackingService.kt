@@ -39,8 +39,10 @@ class LocationTrackingService : Service() {
             "timestamp" to System.currentTimeMillis()
           )
           try {
-            val databaseRef = FirebaseDatabase.getInstance().getReference("drivers_locations")
-            databaseRef.child(driverId).setValue(locationMap)
+            if (com.google.firebase.FirebaseApp.getApps(this@LocationTrackingService).isNotEmpty()) {
+              val databaseRef = FirebaseDatabase.getInstance().getReference("drivers_locations")
+              databaseRef.child(driverId).setValue(locationMap)
+            }
           } catch (_: Exception) {
             // Graceful offline fallback
           }

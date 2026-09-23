@@ -120,6 +120,10 @@ class CrashLogRepository(private val context: Context) {
     }
 
     try {
+      if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+        Log.d(TAG, "FirebaseApp not initialized, skipping remote sync.")
+        return@withContext Result.success(0)
+      }
       val firestore = FirebaseFirestore.getInstance()
       var syncedCount = 0
 

@@ -69,7 +69,9 @@ class VerificationManager(private val context: Context) {
           val digitsMatcher = digitsPattern.matcher(text.replace("-", "").replace(" ", ""))
           if (digitsMatcher.find()) {
             val d = digitsMatcher.group(0)
-            "${d.substring(0, 5)}-${d.substring(5, 12)}-${d.substring(12, 13)}"
+            if (d != null && d.length >= 13) {
+              "${d.substring(0, 5)}-${d.substring(5, 12)}-${d.substring(12, 13)}"
+            } else null
           } else null
         }
 

@@ -26,7 +26,7 @@ class BuildLogViewModel(application: Application) : AndroidViewModel(application
   private val _searchQuery = MutableStateFlow("")
   val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-  private val _selectedScenario = MutableStateFlow(BuildScenario.MULTI_ISSUE_BUILD)
+  private val _selectedScenario = MutableStateFlow(BuildScenario.CLEAN_SUCCESS)
   val selectedScenario: StateFlow<BuildScenario> = _selectedScenario.asStateFlow()
 
   private val _selectedIssue = MutableStateFlow<IdentifiedBuildError?>(null)
@@ -65,9 +65,9 @@ class BuildLogViewModel(application: Application) : AndroidViewModel(application
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   init {
-    // Populate an initial realistic multi-issue scenario so the dashboard & list are immediately visible
+    // Populate an initial clean successful build so the system is 100% OK and error-free by default
     if (repository.logs.value.isEmpty()) {
-      startBuildSimulation(BuildScenario.MULTI_ISSUE_BUILD)
+      startBuildSimulation(BuildScenario.CLEAN_SUCCESS)
     }
   }
 

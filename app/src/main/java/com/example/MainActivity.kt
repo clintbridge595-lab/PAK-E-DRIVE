@@ -35,6 +35,9 @@ import com.example.ui.components.AiCodeFixDrawer
 import com.example.ui.components.BuildLogAnalyzerDialog
 import com.example.ui.components.NetworkTimeoutErrorDialog
 import com.example.ui.components.PakEDriveTopBar
+import androidx.compose.material.icons.automirrored.filled.Chat
+import com.example.ui.dialogs.AboutAppDialog
+import com.example.ui.dialogs.PrivacyPolicyDialog
 import com.example.ui.dialogs.CnicAndBiometricVerificationDialog
 import com.example.ui.dialogs.PakistaniPaymentDialog
 import com.example.ui.screens.*
@@ -53,14 +56,7 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       MyApplicationTheme {
-        var showSplash by remember { mutableStateOf(true) }
-        val userProfile by viewModel.userProfile.collectAsState()
-
-        if (showSplash) {
-          SplashScreen(onTimeout = { showSplash = false })
-        } else {
-          PakEDriveApp(viewModel = viewModel)
-        }
+        PakEDriveApp(viewModel = viewModel)
       }
     }
   }
@@ -94,33 +90,14 @@ fun PakEDriveApp(viewModel: MainViewModel) {
   val unreadCount by viewModel.unreadNotificationCount.collectAsState()
   var showCitySelector by remember { mutableStateOf(false) }
   var showAiDrawer by remember { mutableStateOf(false) }
+  var showPrivacyPolicy by remember { mutableStateOf(false) }
+  var showAboutApp by remember { mutableStateOf(false) }
 
   // Crash Log & Offline Sync
   val crashLogRepo = remember { CrashLogRepository.getInstance(context) }
   val unsyncedCrashCount by crashLogRepo.getUnsyncedCount().collectAsState(initial = 0)
 
-  // Network state monitoring
-  val networkMonitor = remember { NetworkMonitor(context) }
-  val isOnline by networkMonitor.isOnline.collectAsState(initial = true)
   val snackbarHostState = remember { SnackbarHostState() }
-  var wasOffline by remember { mutableStateOf(false) }
-
-  LaunchedEffect(isOnline) {
-    if (!isOnline) {
-      wasOffline = true
-      snackbarHostState.showSnackbar(
-        message = "⚠️ No Internet Connection — Please check mobile data or Wi-Fi to book cars & view live rates.",
-        duration = SnackbarDuration.Indefinite,
-        actionLabel = "Dismiss"
-      )
-    } else if (wasOffline) {
-      wasOffline = false
-      snackbarHostState.showSnackbar(
-        message = "✅ Back Online — Internet connection restored.",
-        duration = SnackbarDuration.Short
-      )
-    }
-  }
 
   ModalNavigationDrawer(
     drawerState = drawerState,
@@ -233,7 +210,7 @@ fun PakEDriveApp(viewModel: MainViewModel) {
         )
 
         NavigationDrawerItem(
-          icon = { Icon(Icons.Default.Chat, contentDescription = null, tint = Color(0xFF25D366)) },
+          icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color(0xFF25D366)) },
           label = { Text("WhatsApp Helpline", fontWeight = FontWeight.SemiBold, fontSize = 14.sp) },
           selected = false,
           onClick = {
@@ -316,23 +293,23 @@ fun PakEDriveApp(viewModel: MainViewModel) {
         )
 
         NavigationDrawerItem(
-          icon = { Icon(Icons.Default.WifiOff, contentDescription = null, tint = Color(0xFFDC2626)) },
-          label = { Text("Network Timeout Simulator", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          icon = { Icon(Icons.Default.Policy, contentDescription = null, tint = NavyPrimary) },
+          label = { Text("Privacy Policy & Terms", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
           selected = false,
           onClick = {
             coroutineScope.launch { drawerState.close() }
-            viewModel.setTimeoutErrorVisible(true)
+            showPrivacyPolicy = true
           },
           modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
         )
 
         NavigationDrawerItem(
-          icon = { Icon(Icons.Default.Terminal, contentDescription = null, tint = NavyPrimary) },
-          label = { Text("Gradle Build Health & Logs (AI)", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
+          icon = { Icon(Icons.Default.Info, contentDescription = null, tint = NavyPrimary) },
+          label = { Text("About PAK E DRIVE", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = Color(0xFF111827)) },
           selected = false,
           onClick = {
             coroutineScope.launch { drawerState.close() }
-            viewModel.setShowBuildLogAnalyzer(true)
+            showAboutApp = true
           },
           modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
         )
@@ -358,74 +335,48 @@ fun PakEDriveApp(viewModel: MainViewModel) {
       },
       floatingActionButton = {
         FloatingActionButton(
-          onClick = { showAiDrawer = true },
-          containerColor = PakGreen,
+          onClick = {
+            val intent = Intent(
+              Intent.ACTION_VIEW,
+              Uri.parse("https://wa.me/923152292493?text=Assalam-o-Alaikum%20PAK%20E%20DRIVE!%20I%20want%20to%20inquire%20about%20car%20rental.")
+            )
+            try { context.startActivity(intent) } catch (_: Exception) {}
+          },
+          containerColor = Color(0xFF25D366),
           contentColor = Color.White,
           shape = RoundedCornerShape(16.dp),
-          modifier = Modifier.testTag("fab_ai_code_fix")
+          modifier = Modifier.testTag("fab_whatsapp_support")
         ) {
           Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
           ) {
             Icon(
-              imageVector = Icons.Default.AutoAwesome,
-              contentDescription = "AI Fix Drawer",
+              imageVector = Icons.AutoMirrored.Filled.Chat,
+              contentDescription = "WhatsApp Helpline",
               tint = Color.White,
               modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-              text = "AI Fix",
+              text = "WhatsApp",
               fontWeight = FontWeight.Bold,
               fontSize = 13.sp,
               color = Color.White
             )
-            if (unsyncedCrashCount > 0) {
-              Spacer(modifier = Modifier.width(6.dp))
-              Badge(containerColor = MaterialTheme.colorScheme.error) {
-                Text("$unsyncedCrashCount")
-              }
-            }
           }
         }
       },
       floatingActionButtonPosition = FabPosition.End,
       topBar = {
-        Column {
-          PakEDriveTopBar(
-            selectedTab = selectedTab,
-            currentCity = selectedCity,
-            userName = userProfile.name.split(" ").firstOrNull()?.ifBlank { "Mehdi" } ?: "Mehdi",
-            unreadCount = unreadCount,
-            onNotificationsClick = { viewModel.setShowNotifications(true) },
-            onCityClick = { showCitySelector = true }
-          )
-          if (!isOnline) {
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFDC2626))
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.Center
-            ) {
-              Icon(
-                Icons.Default.WifiOff,
-                contentDescription = "Offline",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-              )
-              Spacer(modifier = Modifier.width(8.dp))
-              Text(
-                text = "No Internet Connection • Offline Mode",
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-              )
-            }
-          }
-        }
+        PakEDriveTopBar(
+          selectedTab = selectedTab,
+          currentCity = selectedCity,
+          userName = userProfile.name.split(" ").firstOrNull()?.ifBlank { "Mehdi" } ?: "Mehdi",
+          unreadCount = unreadCount,
+          onNotificationsClick = { viewModel.setShowNotifications(true) },
+          onCityClick = { showCitySelector = true }
+        )
       },
       bottomBar = {
         NavigationBar(
@@ -639,9 +590,15 @@ fun PakEDriveApp(viewModel: MainViewModel) {
     )
   }
 
-  if (showBuildLogAnalyzer) {
-    BuildLogAnalyzerDialog(
-      onDismiss = { viewModel.setShowBuildLogAnalyzer(false) }
+  if (showPrivacyPolicy) {
+    PrivacyPolicyDialog(
+      onDismiss = { showPrivacyPolicy = false }
+    )
+  }
+
+  if (showAboutApp) {
+    AboutAppDialog(
+      onDismiss = { showAboutApp = false }
     )
   }
 }
