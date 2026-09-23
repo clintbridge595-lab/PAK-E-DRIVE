@@ -1,5 +1,4 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
-import java.util.Base64
 
 plugins {
   alias(libs.plugins.android.application)
@@ -15,47 +14,44 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.pomo.mypomoapp"
+    applicationId = "com.pakedrive.official"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0.0.0"
+    val vCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 2
+    val vName = System.getenv("VERSION_NAME") ?: "1.0.1"
+    versionCode = vCode
+    versionName = vName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    manifestPlaceholders["MAPS_API_KEY"] = System.getenv("MAPS_API_KEY") ?: ""
   }
 
   signingConfigs {
     create("release") {
-      val keystoreBase64 = System.getenv("KEYSTORE_BASE64")
-      val keystorePathEnv = System.getenv("KEYSTORE_PATH")
-      val releaseKeystoreFile = file("${rootDir}/release-keystore.jks")
+      val keystorePath = System.getenv("KEYSTORE_PATH")
+      val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
+      val keyAliasName = System.getenv("KEY_ALIAS")
+      val keyPassword = System.getenv("KEY_PASSWORD")
 
-      if (!keystoreBase64.isNullOrBlank() && (!releaseKeystoreFile.exists() || releaseKeystoreFile.length() == 0L)) {
-        try {
-          val decoded = Base64.getDecoder().decode(keystoreBase64.trim())
-          releaseKeystoreFile.writeBytes(decoded)
-        } catch (_: Exception) {}
-      }
-
-      val targetKeystore = when {
-        !keystorePathEnv.isNullOrBlank() && file(keystorePathEnv).exists() -> file(keystorePathEnv)
-        releaseKeystoreFile.exists() && releaseKeystoreFile.length() > 0L -> releaseKeystoreFile
-        file("${rootDir}/my-upload-key.jks").exists() -> file("${rootDir}/my-upload-key.jks")
-        else -> null
-      }
-
-      if (targetKeystore != null) {
-        storeFile = targetKeystore
-        storePassword = System.getenv("KEYSTORE_PASSWORD") ?: System.getenv("STORE_PASSWORD") ?: ""
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: storePassword
+      if (!keystorePath.isNullOrBlank()) {
+        val candidate = file(keystorePath)
+        val ksFile = if (candidate.exists()) candidate else rootProject.file(keystorePath)
+        if (ksFile.exists()) {
+          storeFile = ksFile
+          storePassword = keystorePassword ?: ""
+          keyAlias = keyAliasName ?: ""
+          this.keyPassword = keyPassword ?: keystorePassword ?: ""
+        }
       }
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      val localDebugKeystore = file("${rootDir}/debug.keystore")
+      if (localDebugKeystore.exists()) {
+        storeFile = localDebugKeystore
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
   }
 
@@ -65,15 +61,16 @@ android {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 
-      val releaseConfig = signingConfigs.findByName("release")
-      val hasKeystore = releaseConfig?.storeFile != null && releaseConfig.storeFile!!.exists()
-      val hasPassword = !releaseConfig?.storePassword.isNullOrBlank()
-
-      if (hasKeystore && hasPassword) {
-        signingConfig = releaseConfig
-      } else {
-        signingConfig = signingConfigs.getByName("debug")
+      val releaseSigning = signingConfigs.getByName("release")
+      val isReleaseTask = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+      if (isReleaseTask && (releaseSigning.storeFile == null || !releaseSigning.storeFile!!.exists() || releaseSigning.storePassword.isNullOrBlank())) {
+        throw org.gradle.api.GradleException(
+          "Release build failed: Production release signing is not configured! " +
+          "Please ensure KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are provided. " +
+          "Fallback to debug signing in release builds is strictly disabled."
+        )
       }
+      signingConfig = releaseSigning
     }
     debug { signingConfig = signingConfigs.findByName("debugConfig") ?: signingConfigs.getByName("debug") }
   }
