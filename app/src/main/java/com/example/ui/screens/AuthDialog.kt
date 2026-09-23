@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -487,7 +488,7 @@ fun AuthDialog(
             Spacer(modifier = Modifier.width(8.dp))
             Text("Processing...", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
           } else {
-            Icon(if (authMode == 0) Icons.Default.PersonAdd else Icons.Default.Login, contentDescription = null, tint = Color.White)
+            Icon(if (authMode == 0) Icons.Default.PersonAdd else Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
               text = if (authMode == 0) "Create Client Account" else "Sign In as Client",

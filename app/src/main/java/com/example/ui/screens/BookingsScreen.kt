@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -417,7 +418,7 @@ fun BookingItemCard(
           shape = RoundedCornerShape(8.dp),
           contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
         ) {
-          Icon(Icons.Default.Chat, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+          Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
           Spacer(modifier = Modifier.width(4.dp))
           Text("Trip Support", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }

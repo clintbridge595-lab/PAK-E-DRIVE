@@ -11,6 +11,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -437,7 +439,7 @@ fun LoginScreen(
                   Spacer(modifier = Modifier.width(10.dp))
                   Text("Authenticating...", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 } else {
-                  Icon(Icons.Default.Login, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                  Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                   Spacer(modifier = Modifier.width(8.dp))
                   Text("Sign In & Continue", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
@@ -538,7 +540,7 @@ fun LoginScreen(
                   if (isDispatchingCode) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                   } else {
-                    Icon(Icons.Default.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Send 6-Digit Security Code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                   }

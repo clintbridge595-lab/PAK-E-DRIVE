@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -141,7 +142,7 @@ fun BookingSuccessDialog(
           shape = RoundedCornerShape(10.dp),
           modifier = Modifier.fillMaxWidth()
         ) {
-          Icon(Icons.Default.Chat, contentDescription = null, tint = StatusGreen, modifier = Modifier.size(16.dp))
+          Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = StatusGreen, modifier = Modifier.size(16.dp))
           Spacer(modifier = Modifier.width(6.dp))
           Text("WhatsApp Fleet Support")
         }

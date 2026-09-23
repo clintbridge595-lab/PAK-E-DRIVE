@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -100,7 +101,7 @@ fun ErrorListFilterSystem(
         label = "All Issues",
         count = allErrors.size,
         isSelected = filter.isAllSelected,
-        icon = Icons.Default.ListAlt,
+        icon = Icons.AutoMirrored.Filled.ListAlt,
         activeColor = NavyPrimary,
         activeBgColor = NavyPrimary.copy(alpha = 0.12f),
         testTag = "filter_all_issues",

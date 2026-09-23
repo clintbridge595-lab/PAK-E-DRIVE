@@ -11,6 +11,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -451,7 +454,7 @@ fun ProfileScreen(
 
         // WhatsApp Direct
         SupportActionRow(
-          icon = Icons.Default.Chat,
+          icon = Icons.AutoMirrored.Filled.Chat,
           title = "WhatsApp Fleet Manager",
           subtitle = "+92 315 2292493",
           onClick = {
@@ -465,7 +468,7 @@ fun ProfileScreen(
 
         // FAQ & Support Center Dialog
         SupportActionRow(
-          icon = Icons.Default.HelpOutline,
+          icon = Icons.AutoMirrored.Filled.HelpOutline,
           title = "Rental FAQs & Policy Guide",
           subtitle = "Chauffeur rules, fuel policy & cancellation terms",
           onClick = {
@@ -568,7 +571,7 @@ fun ProfileScreen(
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyPrimary)
           ) {
-            Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text("Log Out of App")
           }

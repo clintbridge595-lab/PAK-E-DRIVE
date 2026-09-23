@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -230,7 +232,7 @@ fun CnicAndBiometricVerificationDialog(
               ) {
                 Text("Proceed to Next Step")
                 Spacer(modifier = Modifier.width(6.dp))
-                Icon(Icons.Default.ArrowForward, contentDescription = null)
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
               }
             }
           }
@@ -265,7 +267,7 @@ fun CnicAndBiometricVerificationDialog(
                 placeholder = { Text("LHR-2018-93821") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Article, contentDescription = null) }
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null) }
               )
 
               Spacer(modifier = Modifier.height(12.dp))
@@ -345,7 +347,7 @@ fun CnicAndBiometricVerificationDialog(
                 ) {
                   Text("Proceed to Face Verification")
                   Spacer(modifier = Modifier.width(6.dp))
-                  Icon(Icons.Default.ArrowForward, contentDescription = null)
+                  Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                 }
               }
             }

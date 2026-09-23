@@ -492,7 +492,7 @@ fun CrashLogItemCard(
 
       AnimatedVisibility(visible = isExpanded) {
         Column(modifier = Modifier.padding(top = 8.dp)) {
-          Divider(color = MaterialTheme.colorScheme.outlineVariant)
+          HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
           Spacer(modifier = Modifier.height(6.dp))
           Text(
             text = crashLog.stackTrace,

@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1114,7 +1115,7 @@ fun BookingFlowDialog(
               Text("Signing In & Confirming Booking...", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             } else {
               Icon(
-                if (!isClientLoggedIn) Icons.Default.Login else Icons.Default.CheckCircle,
+                if (!isClientLoggedIn) Icons.AutoMirrored.Filled.Login else Icons.Default.CheckCircle,
                 contentDescription = null,
                 tint = Color.White
               )
