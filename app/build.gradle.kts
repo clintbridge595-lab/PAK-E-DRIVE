@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Base64
 
 plugins {
   alias(libs.plugins.android.application)
@@ -25,11 +26,30 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      val keystoreBase64 = System.getenv("KEYSTORE_BASE64")
+      val keystorePathEnv = System.getenv("KEYSTORE_PATH")
+      val releaseKeystoreFile = file("${rootDir}/release-keystore.jks")
+
+      if (!keystoreBase64.isNullOrBlank() && (!releaseKeystoreFile.exists() || releaseKeystoreFile.length() == 0L)) {
+        try {
+          val decoded = Base64.getDecoder().decode(keystoreBase64.trim())
+          releaseKeystoreFile.writeBytes(decoded)
+        } catch (_: Exception) {}
+      }
+
+      val targetKeystore = when {
+        !keystorePathEnv.isNullOrBlank() && file(keystorePathEnv).exists() -> file(keystorePathEnv)
+        releaseKeystoreFile.exists() && releaseKeystoreFile.length() > 0L -> releaseKeystoreFile
+        file("${rootDir}/my-upload-key.jks").exists() -> file("${rootDir}/my-upload-key.jks")
+        else -> null
+      }
+
+      if (targetKeystore != null) {
+        storeFile = targetKeystore
+        storePassword = System.getenv("KEYSTORE_PASSWORD") ?: System.getenv("STORE_PASSWORD") ?: ""
+        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: storePassword
+      }
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
@@ -44,7 +64,16 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("debug")
+
+      val releaseConfig = signingConfigs.findByName("release")
+      val hasKeystore = releaseConfig?.storeFile != null && releaseConfig.storeFile!!.exists()
+      val hasPassword = !releaseConfig?.storePassword.isNullOrBlank()
+
+      if (hasKeystore && hasPassword) {
+        signingConfig = releaseConfig
+      } else {
+        signingConfig = signingConfigs.getByName("debug")
+      }
     }
     debug { signingConfig = signingConfigs.findByName("debugConfig") ?: signingConfigs.getByName("debug") }
   }
