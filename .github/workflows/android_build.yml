@@ -26,24 +26,37 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Decode Keystore from Base64
+      - name: Prepare Signing Keystore
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "KEYSTORE_BASE64 found in secrets. Decoding into release-keystore.jks..."
             echo "$KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
-            echo "Keystore decoded successfully into release-keystore.jks"
+            echo "Keystore decoded successfully."
           else
-            echo "KEYSTORE_BASE64 secret is not set; falling back to debug signing configuration."
+            echo "KEYSTORE_BASE64 secret is missing. Generating on-the-fly self-signed release keystore using keytool..."
+            keytool -genkeypair -v \
+              -keystore release-keystore.jks \
+              -alias "${KEY_ALIAS}" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "${KEYSTORE_PASSWORD}" \
+              -keypass "${KEY_PASSWORD}" \
+              -dname "CN=Android Release, OU=Release, O=PAK E DRIVE, L=Islamabad, ST=Islamabad, C=PK"
+            echo "Generated self-signed release keystore (Alias: ${KEY_ALIAS}) successfully."
           fi
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'MyPassword123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'MyPassword123' }}
 
       - name: Build Release Bundle (.aab)
         run: ./gradlew bundleRelease --stacktrace
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'MyPassword123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'MyPassword123' }}
           KEYSTORE_PATH: ${{ github.workspace }}/release-keystore.jks
 
       - name: Upload Release AAB Artifact
