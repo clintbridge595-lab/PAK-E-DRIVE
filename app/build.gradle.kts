@@ -1,4 +1,6 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.io.File
+import java.util.Base64
 
 plugins {
   alias(libs.plugins.android.application)
@@ -27,24 +29,44 @@ android {
   }
 
   signingConfigs {
-    create("release") {
+    maybeCreate("release").apply {
+      val keystoreBase64 = System.getenv("KEYSTORE_BASE64")
       val keystorePath = System.getenv("KEYSTORE_PATH")
       val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
       val keyAliasName = System.getenv("KEY_ALIAS")
       val keyPassword = System.getenv("KEY_PASSWORD")
 
+      var targetKeystoreFile: java.io.File? = null
+
       if (!keystorePath.isNullOrBlank()) {
         val candidate = file(keystorePath)
         val ksFile = if (candidate.exists()) candidate else rootProject.file(keystorePath)
         if (ksFile.exists()) {
-          storeFile = ksFile
-          storePassword = keystorePassword ?: ""
-          keyAlias = keyAliasName ?: ""
-          this.keyPassword = keyPassword ?: keystorePassword ?: ""
+          targetKeystoreFile = ksFile
         }
       }
+
+      if (targetKeystoreFile == null && !keystoreBase64.isNullOrBlank()) {
+        try {
+          val decodedBytes = Base64.getDecoder().decode(keystoreBase64.trim())
+          val tempDir = layout.buildDirectory.dir("tmp/keystore").get().asFile
+          tempDir.mkdirs()
+          val decodedKsFile = File(tempDir, "release.jks")
+          decodedKsFile.writeBytes(decodedBytes)
+          targetKeystoreFile = decodedKsFile
+        } catch (_: Exception) {
+          // Ignore decoding errors during setup; validation below will report unconfigured release signing.
+        }
+      }
+
+      if (targetKeystoreFile != null && targetKeystoreFile.exists()) {
+        storeFile = targetKeystoreFile
+        storePassword = keystorePassword ?: ""
+        keyAlias = keyAliasName ?: ""
+        this.keyPassword = if (!keyPassword.isNullOrBlank()) keyPassword else keystorePassword ?: ""
+      }
     }
-    create("debugConfig") {
+    maybeCreate("debugConfig").apply {
       val localDebugKeystore = file("${rootDir}/debug.keystore")
       if (localDebugKeystore.exists()) {
         storeFile = localDebugKeystore
@@ -66,7 +88,7 @@ android {
       if (isReleaseTask && (releaseSigning.storeFile == null || !releaseSigning.storeFile!!.exists() || releaseSigning.storePassword.isNullOrBlank())) {
         throw org.gradle.api.GradleException(
           "Release build failed: Production release signing is not configured! " +
-          "Please ensure KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are provided. " +
+          "Please ensure KEYSTORE_BASE64 (or KEYSTORE_PATH), KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are provided. " +
           "Fallback to debug signing in release builds is strictly disabled."
         )
       }
