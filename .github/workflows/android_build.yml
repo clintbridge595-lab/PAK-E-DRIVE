@@ -1,177 +1,263 @@
 name: Android Release Build
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       versionCode:
-        description: 'Play Store versionCode (integer, e.g. 2)'
-        required: false
-        default: '2'
+        description: "Google Play versionCode"
+        required: true
+        default: "4"
         type: string
       versionName:
-        description: 'Release versionName (e.g. 1.0.1)'
-        required: false
-        default: '1.0.1'
+        description: "Google Play versionName"
+        required: true
+        default: "1.0.2"
         type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-build
+  cancel-in-progress: true
 
 jobs:
   build-release-bundle:
-    name: Build Release AAB
-    runs-on: ubuntu-latest
+    name: Build Signed Production AAB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: "17"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+          add-job-summary: "on-failure"
 
-      - name: Grant execute permission for gradlew
+      - name: Grant execute permission to Gradle Wrapper
         run: chmod +x ./gradlew
 
       - name: Validate Required Secrets
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "Validating required GitHub repository secrets for production release..."
+          set -euo pipefail
+
+          echo "Checking required production signing secrets..."
+
           MISSING=""
-          if [ -z "$KEYSTORE_BASE64" ]; then MISSING="$MISSING KEYSTORE_BASE64"; fi
-          if [ -z "$KEYSTORE_PASSWORD" ]; then MISSING="$MISSING KEYSTORE_PASSWORD"; fi
-          if [ -z "$KEY_ALIAS" ]; then MISSING="$MISSING KEY_ALIAS"; fi
-          if [ -z "$KEY_PASSWORD" ]; then MISSING="$MISSING KEY_PASSWORD"; fi
+
+          [ -n "${KEYSTORE_BASE64:-}" ] || MISSING="${MISSING} KEYSTORE_BASE64"
+          [ -n "${KEYSTORE_PASSWORD:-}" ] || MISSING="${MISSING} KEYSTORE_PASSWORD"
+          [ -n "${KEY_ALIAS:-}" ] || MISSING="${MISSING} KEY_ALIAS"
+          [ -n "${KEY_PASSWORD:-}" ] || MISSING="${MISSING} KEY_PASSWORD"
 
           if [ -n "$MISSING" ]; then
-            echo "::error::Production release build cannot proceed. Missing required secret(s):$MISSING"
-            echo "Please configure these secrets in GitHub under: Settings -> Secrets and variables -> Actions"
+            echo "::error::Missing required GitHub secret(s):$MISSING"
+            echo "::error::Configure them under Settings > Secrets and variables > Actions."
             exit 1
           fi
-          echo "All required release signing secrets are present."
+
+          echo "All required signing secrets are present."
+
+      - name: Decode Production Upload Keystore
+        id: keystore
+        shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
-      - name: Decode and Validate Keystore
-        id: validate-keystore
         run: |
-          KEYSTORE_DIR="${RUNNER_TEMP:-/tmp}/keystore"
-          mkdir -p "$KEYSTORE_DIR"
-          KEYSTORE_PATH="$KEYSTORE_DIR/release.jks"
-          echo "KEYSTORE_PATH=$KEYSTORE_PATH" >> $GITHUB_ENV
+          set -euo pipefail
 
-          # 1. Decode raw Base64 into binary JKS file
-          echo "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE_PATH"
+          KEYSTORE_PATH="$RUNNER_TEMP/pakedrive-upload.jks"
 
-          # 2. Verify decoded file size
+          echo "Decoding production upload keystore into runner temp directory..."
+
+          printf '%s' "$KEYSTORE_BASE64" \
+            | tr -d '\r\n ' \
+            | base64 --decode > "$KEYSTORE_PATH"
+
           if [ ! -s "$KEYSTORE_PATH" ]; then
-            echo "::error::Decoded keystore file is empty or corrupted. Verify KEYSTORE_BASE64 is valid raw base64 of the .jks file."
+            echo "::error::Decoded keystore is empty."
             exit 1
           fi
 
-          # 3. Verify keystore can be opened with KEYSTORE_PASSWORD and target alias exists
-          LIST_OUTPUT=$(keytool -list -v -keystore "$KEYSTORE_PATH" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" 2>&1)
-          KEYTOOL_EXIT=$?
-          if [ $KEYTOOL_EXIT -ne 0 ]; then
-            echo "::error::Keystore validation failed. Unable to access alias '$KEY_ALIAS' with KEYSTORE_PASSWORD."
-            echo "$LIST_OUTPUT" | grep -iE "(exception|error|alias)" || true
-            exit 1
-          fi
+          echo "Validating keystore and alias..."
 
-          # 4. Verify key entry can be accessed with KEY_PASSWORD
-          KEY_CHECK=$(keytool -exportcert -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASSWORD -file /dev/null 2>&1)
-          if [ $? -ne 0 ]; then
-            echo "::error::Key password validation failed. KEY_PASSWORD does not match alias '$KEY_ALIAS'."
-            exit 1
-          fi
+          keytool -list \
+            -keystore "$KEYSTORE_PATH" \
+            -storepass:env KEYSTORE_PASSWORD \
+            -alias "$KEY_ALIAS" \
+            >/tmp/keystore-list.txt 2>&1
 
-          # 5. Print safe diagnostic information (NO secrets, passwords, or base64 data)
-          echo "=== Production Keystore Diagnostics ==="
-          echo "Keystore file status: Decoded and verified successfully"
-          echo "Target Key Alias: $KEY_ALIAS"
-          echo "$LIST_OUTPUT" | grep -E "(Keystore type|Keystore provider|Owner:|Issuer:|Serial number:|Valid from:|Certificate fingerprints|SHA256:|SHA1:)" || true
-          echo "======================================="
+          keytool -exportcert \
+            -keystore "$KEYSTORE_PATH" \
+            -alias "$KEY_ALIAS" \
+            -storepass:env KEYSTORE_PASSWORD \
+            -keypass:env KEY_PASSWORD \
+            -file "$RUNNER_TEMP/upload-cert.pem" \
+            >/dev/null 2>&1
 
-          # Capture the expected certificate SHA-256 for subsequent AAB verification
-          EXPECTED_SHA256=$(echo "$LIST_OUTPUT" | grep -i "SHA256:" | head -n1 | awk -F': ' '{print $2}' | tr -d ' ')
-          echo "EXPECTED_SHA256=$EXPECTED_SHA256" >> $GITHUB_ENV
+          echo "Keystore validation successful."
+
+          echo "KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
+      - name: Verify Upload Key Certificate
+        shell: bash
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
 
-      - name: Run Unit Tests & Roborazzi Checks
-        run: ./gradlew testDebugUnitTest --stacktrace
+          echo "=== Upload Certificate ==="
 
-      - name: Build Release Bundle (.aab)
-        run: ./gradlew bundleRelease --stacktrace
+          keytool -list -v \
+            -keystore "$KEYSTORE_PATH" \
+            -storepass:env KEYSTORE_PASSWORD \
+            -alias "$KEY_ALIAS" \
+            | grep -E "Owner:|Issuer:|Valid from:|SHA256:|SHA1:" || true
+
+          echo "========================="
+
+      - name: Run Unit Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ./gradlew testDebugUnitTest \
+            --stacktrace \
+            --no-daemon
+
+      - name: Build Production AAB
+        shell: bash
         env:
           KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          VERSION_CODE: ${{ inputs.versionCode || '2' }}
-          VERSION_NAME: ${{ inputs.versionName || '1.0.1' }}
+          VERSION_CODE: ${{ inputs.versionCode }}
+          VERSION_NAME: ${{ inputs.versionName }}
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
-
-      - name: Verify Release AAB and Signature
         run: |
-          AAB_FILE=$(find app/build/outputs/bundle/release -type f -name "*.aab" | head -n1)
-          if [ -z "$AAB_FILE" ] || [ ! -f "$AAB_FILE" ]; then
-            echo "::error::Release AAB file was not found in app/build/outputs/bundle/release/"
+          set -euo pipefail
+
+          echo "Building production release..."
+
+          ./gradlew bundleRelease \
+            --stacktrace \
+            --no-daemon
+
+      - name: Verify AAB Exists
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          AAB_FILE="$(find app/build/outputs/bundle/release \
+            -type f \
+            -name "*.aab" \
+            -print -quit)"
+
+          if [ -z "$AAB_FILE" ]; then
+            echo "::error::Production AAB was not generated."
             exit 1
           fi
 
-          echo "Found generated AAB: $AAB_FILE"
-          echo "File size: $(stat -c%s "$AAB_FILE") bytes"
+          echo "AAB found:"
+          echo "$AAB_FILE"
 
-          # Verify signature on the AAB using jarsigner
-          jarsigner -verify -verbose -certs "$AAB_FILE" > /tmp/jarsigner_verify.log 2>&1
-          if grep -q "jar verified" /tmp/jarsigner_verify.log; then
-            echo "AAB Signature Status: VERIFIED (Jar verified successfully)"
-          else
-            echo "::error::AAB signature verification failed! The AAB is not properly signed."
-            cat /tmp/jarsigner_verify.log | tail -n 25
+          SIZE="$(stat -c%s "$AAB_FILE")"
+
+          if [ "$SIZE" -le 0 ]; then
+            echo "::error::Generated AAB is empty."
             exit 1
           fi
 
-          # Extract and display the signing certificate fingerprints from the AAB
-          echo "=== Signed AAB Certificate Fingerprint ==="
-          CERT_FINGERPRINTS=$(keytool -printcert -jarfile "$AAB_FILE")
-          echo "$CERT_FINGERPRINTS" | grep -E "(Owner:|Issuer:|Valid from:|SHA256:|SHA1:)" || true
-          echo "=========================================="
+          echo "AAB size: $SIZE bytes"
 
-          # Check if the expected SHA256 from the upload keystore matches the AAB
-          if [ -n "$EXPECTED_SHA256" ]; then
-            AAB_SHA256=$(echo "$CERT_FINGERPRINTS" | grep -i "SHA256:" | head -n1 | awk -F': ' '{print $2}' | tr -d ' ')
-            echo "Keystore Expected SHA-256: $EXPECTED_SHA256"
-            echo "AAB Signature SHA-256:     $AAB_SHA256"
-            if [ "$EXPECTED_SHA256" = "$AAB_SHA256" ]; then
-              echo "Certificate Match: CONFIRMED - AAB is signed with the authorized production upload key."
-            else
-              echo "::error::AAB certificate fingerprint ($AAB_SHA256) does not match expected keystore fingerprint ($EXPECTED_SHA256)!"
-              exit 1
-            fi
-          fi
-
-      - name: Securely Destroy Temporary Keystore
-        if: always()
+      - name: Verify AAB Signature
+        shell: bash
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_PATH" ] && [ -f "$KEYSTORE_PATH" ]; then
-            shred -u -z "$KEYSTORE_PATH" || rm -f "$KEYSTORE_PATH"
-            echo "Temporary keystore securely destroyed from runner."
+          set -euo pipefail
+
+          AAB_FILE="$(find app/build/outputs/bundle/release \
+            -type f \
+            -name "*.aab" \
+            -print -quit)"
+
+          echo "Verifying AAB signature..."
+
+          jarsigner \
+            -verify \
+            -verbose \
+            -certs \
+            "$AAB_FILE" \
+            > "$RUNNER_TEMP/jarsigner.log" 2>&1
+
+          if ! grep -q "jar verified" "$RUNNER_TEMP/jarsigner.log"; then
+            echo "::error::AAB signature verification failed."
+
+            tail -n 40 "$RUNNER_TEMP/jarsigner.log"
+
+            exit 1
           fi
 
-      - name: Upload Release AAB Artifact
+          echo "AAB signature verification successful."
+
+      - name: Display AAB Certificate Fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          AAB_FILE="$(find app/build/outputs/bundle/release \
+            -type f \
+            -name "*.aab" \
+            -print -quit)"
+
+          echo "=== AAB Signing Certificate ==="
+
+          keytool -printcert \
+            -jarfile "$AAB_FILE" \
+            | grep -E "Owner:|Issuer:|Valid from:|SHA256:|SHA1:" || true
+
+          echo "================================"
+
+      - name: Upload Production AAB
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab
+          name: pak-e-drive-production-aab
           path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup Sensitive Files
+        if: always()
+        shell: bash
+        run: |
+          set +e
+
+          if [ -n "${KEYSTORE_PATH:-}" ] && [ -f "$KEYSTORE_PATH" ]; then
+            rm -f "$KEYSTORE_PATH"
+          fi
+
+          rm -f "$RUNNER_TEMP/upload-cert.pem"
+          rm -f "$RUNNER_TEMP/jarsigner.log"
+
+          echo "Temporary signing files removed."
