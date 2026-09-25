@@ -192,8 +192,6 @@ jobs:
 
       - name: Verify AAB Signature
         shell: bash
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
 
